@@ -91,8 +91,9 @@ Gerçek: Hatalı         106             8
 git clone https://github.com/demircigoksu/bosch-quality-ml-pipeline.git
 cd bosch-quality-ml-pipeline
 
-# 2. Veriyi indir (Kaggle'dan train_numeric.csv)
-# data/ klasörüne koy
+# 2. Veriyi indir
+# Orijinal veri: Kaggle'dan train_numeric.csv indirip data/ klasörüne koy
+# Temizlenmiş veri: https://drive.google.com/drive/folders/1-Qobnb-MZkYQ3-Gi2JaQKZ4H185CuYex?usp=drive_link
 
 # 3. Docker container'ları başlat
 docker-compose up -d
