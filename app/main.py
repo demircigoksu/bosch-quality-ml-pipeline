@@ -51,18 +51,18 @@ class FeatureData(BaseModel):
 
 class PredictionResponse(BaseModel):
     """Schema for prediction response."""
-    failure_probability: float = Field(
+    prediction: int = Field(
+        ...,
+        description="Binary prediction: 0 (no failure) or 1 (failure)"
+    )
+    probability: float = Field(
         ...,
         description="Probability of manufacturing failure (0-1)",
         ge=0.0,
         le=1.0
     )
-    prediction: int = Field(
-        ...,
-        description="Binary prediction: 0 (no failure) or 1 (failure)"
-    )
     status: str = Field(
-        ...,
+        default="success",
         description="Status of the prediction"
     )
 
@@ -136,9 +136,8 @@ async def predict_single(data: FeatureData):
         prediction = 1 if failure_prob > 0.5 else 0
         
         return PredictionResponse(
-            failure_probability=float(failure_prob),
             prediction=prediction,
-            status="success"
+            probability=float(failure_prob)
         )
     
     except Exception as e:
@@ -174,9 +173,8 @@ async def predict_batch(data: BatchFeatureData):
         # Create response
         responses = [
             PredictionResponse(
-                failure_probability=float(prob),
                 prediction=pred,
-                status="success"
+                probability=float(prob)
             )
             for prob, pred in zip(failure_probs, predictions)
         ]
