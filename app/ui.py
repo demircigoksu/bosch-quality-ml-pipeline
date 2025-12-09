@@ -66,6 +66,25 @@ def load_sample_data():
         return None
 
 
+def generate_synthetic_sample(feature_columns):
+    """Generate synthetic sample data for demo when real data is not available."""
+    np.random.seed(None)  # Random seed for variety
+    
+    # Create a sample with realistic sensor-like values
+    sample = {}
+    for col in feature_columns:
+        # Mix of normal values, zeros, and NaN (simulating real Bosch data)
+        rand = np.random.random()
+        if rand < 0.3:  # 30% chance of missing (NaN)
+            sample[col] = np.nan
+        elif rand < 0.5:  # 20% chance of zero
+            sample[col] = 0.0
+        else:  # 50% chance of actual value
+            sample[col] = np.random.uniform(-1, 1)
+    
+    return pd.DataFrame([sample])
+
+
 def apply_feature_engineering(df, original_columns):
     """Apply feature engineering to input data."""
     X = df.copy()
@@ -160,37 +179,53 @@ def show_random_sample_prediction(model, feature_columns, threshold):
     """Show random sample prediction - PROJECT REQUIREMENT."""
     st.header("🎲 Rastgele Örnek ile Tahmin")
     
-    st.markdown("""
-    Test verisinden rastgele bir satır çekip model tahmini yapar.
-    Bu özellik, modelin gerçek veriler üzerinde nasıl çalıştığını gösterir.
-    """)
-    
     # Load sample data
     sample_df = load_sample_data()
+    use_synthetic = sample_df is None
     
-    if sample_df is None:
-        st.warning("⚠️ Örnek veri bulunamadı. Lütfen `data/train_numeric.csv` dosyasını ekleyin.")
-        return
+    if use_synthetic:
+        st.info("🔬 **Demo Modu:** Gerçek veri dosyası bulunamadı. Simüle edilmiş sensör verileri kullanılacak.")
+        st.markdown("""
+        Simüle edilmiş veriler, gerçek Bosch sensör verilerinin istatistiksel özelliklerini taklit eder:
+        - %30 eksik değer (NaN)
+        - %20 sıfır değer
+        - %50 rastgele sensör okuması
+        """)
+    else:
+        st.markdown("""
+        Test verisinden rastgele bir satır çekip model tahmini yapar.
+        Bu özellik, modelin gerçek veriler üzerinde nasıl çalıştığını gösterir.
+        """)
     
     col1, col2 = st.columns([1, 3])
     
     with col1:
-        if st.button("🎲 Rastgele Örnek Çek", type="primary", use_container_width=True):
+        button_text = "🎲 Simüle Veri Üret" if use_synthetic else "🎲 Rastgele Örnek Çek"
+        if st.button(button_text, type="primary", use_container_width=True):
             st.session_state['random_sample'] = True
-            st.session_state['sample_idx'] = np.random.randint(0, len(sample_df))
+            st.session_state['use_synthetic'] = use_synthetic
+            if not use_synthetic:
+                st.session_state['sample_idx'] = np.random.randint(0, len(sample_df))
     
     if 'random_sample' in st.session_state and st.session_state['random_sample']:
-        idx = st.session_state['sample_idx']
-        sample = sample_df.iloc[[idx]].copy()
-        
-        # Get actual label if exists
-        actual_label = None
-        if 'Response' in sample.columns:
-            actual_label = int(sample['Response'].values[0])
-            sample = sample.drop(['Id', 'Response'], axis=1, errors='ignore')
-        
-        # Get original columns (excluding Id and Response)
-        original_cols = [c for c in sample.columns if c not in ['Id', 'Response']]
+        # Generate or load sample
+        if use_synthetic or st.session_state.get('use_synthetic', False):
+            # Use synthetic data
+            sample = generate_synthetic_sample(feature_columns)
+            actual_label = None
+            original_cols = feature_columns
+        else:
+            idx = st.session_state['sample_idx']
+            sample = sample_df.iloc[[idx]].copy()
+            
+            # Get actual label if exists
+            actual_label = None
+            if 'Response' in sample.columns:
+                actual_label = int(sample['Response'].values[0])
+                sample = sample.drop(['Id', 'Response'], axis=1, errors='ignore')
+            
+            # Get original columns (excluding Id and Response)
+            original_cols = [c for c in sample.columns if c not in ['Id', 'Response']]
         
         # Apply feature engineering
         X_eng = apply_feature_engineering(sample, original_cols)
