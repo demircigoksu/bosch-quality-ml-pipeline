@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Data files (large datasets)
+*.csv
+*.parquet
+*.feather
+data/*.csv
+data/*.parquet
+
+# Model files (if large)
+# Uncomment if models are too large
+# models/*.pkl
+# models/*.joblib
+
+# Logs
+*.log
+logs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Docker
+.dockerignore
+
+# Documentation
+docs/_build/
+
+# Temporary files
+*.tmp
+*.bak

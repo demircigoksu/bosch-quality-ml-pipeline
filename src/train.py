@@ -20,6 +20,7 @@ from config import (
     RANDOM_SEED,
     TEST_SIZE,
     XGBOOST_PARAMS,
+    RANDOM_FOREST_PARAMS,
     MAX_MISSING_THRESHOLD
 )
 

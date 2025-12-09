@@ -1,0 +1,38 @@
+services:
+  # FastAPI Service
+  api:
+    build: .
+    container_name: bosch-quality-api
+    ports:
+      - "8080:8000"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - bosch-network
+    restart: unless-stopped
+
+  # Streamlit UI Service
+  ui:
+    build: .
+    container_name: bosch-quality-ui
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    command: streamlit run app/ui.py --server.port 8501 --server.address 0.0.0.0
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - bosch-network
+    restart: unless-stopped
+    depends_on:
+      - api
+
+networks:
+  bosch-network:
+    driver: bridge
