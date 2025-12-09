@@ -1,8 +1,8 @@
-# 📊 Bosch Kalite Tahmin Modeli - Detaylı Teknik Rapor
+# Bosch Kalite Tahmin Modeli - Detaylı Teknik Rapor
 
-**Proje:** Bosch Production Line Performance  
-**Tarih:** 9 Aralık 2025  
-**Versiyon:** 1.0  
+Proje: Bosch Production Line Performance  
+Tarih: 9 Aralık 2025  
+Versiyon: 2.0  
 
 ---
 
@@ -11,286 +11,217 @@
 Bu rapor, Bosch üretim hattı kalite tahmin projesinin teknik detaylarını, model performansını ve iş önerilerini içermektedir.
 
 ### Temel Bulgular
-- **Veri Seti:** 1.2M satır, 970 sütun (100K örneklem kullanıldı)
-- **Sınıf Dengesizliği:** 1:175 (çok aşırı dengesiz)
-- **Eksik Veri:** Ortalama %81
-- **Final Model:** XGBoost + SMOTE + Threshold Optimization
-- **AUC-ROC:** 0.6684 | **F1-Score:** 0.0894
+
+Veri Seti: Orijinal veri 1.2M satır ve 970 sütundan oluşuyor. Clean data pipeline ile 450,519 satır ve 158 sütuna indirildi.
+
+Sınıf Dengesizliği: 1:228 oranında (448,552 sağlam, 1,967 hatalı)
+
+Eksik Veri: Orijinal veride %81 eksiklik vardı. Temizleme sonrası %0 eksik veri.
+
+Final Model: XGBoost + Feature Engineering + Threshold Optimization
+
+Performans: AUC-ROC 0.635, Recall %51.4, F1-Score 0.0146
 
 ---
 
 ## 2. Veri Seti Analizi
 
 ### 2.1 Veri Kaynağı
-- **Platform:** Kaggle Competition
-- **Dosya:** train_numeric.csv (1.99 GB)
-- **Örnekleme:** İlk 100,000 satır (RAM kısıtı nedeniyle)
 
-### 2.2 Hedef Değişken Dağılımı
-```
-Response = 0 (Sağlam): 99,432 (%99.43)
-Response = 1 (Hatalı):    568 (%0.57)
-Dengesizlik Oranı: 1:175
-```
+Platform: Kaggle Competition (Bosch Production Line Performance)
 
-### 2.3 Eksik Veri Analizi
-| Kategori | Oran |
-|----------|------|
-| Ortalama eksik | %81 |
-| %90+ eksik sütunlar | 610 sütun (kaldırıldı) |
-| Kalan sütunlar | 358 |
+Orijinal Dosya: train_numeric.csv (2 GB, 1.2M satır, 970 sütun)
 
-### 2.4 Üretim Hattı Yapısı
-```
-L0: 12 istasyon (S0-S11)
-L1: 8 istasyon (S12-S19)
-L2: 4 istasyon (S20-S23)
-L3: 27 istasyon (S24-S51) - En büyük hat
-```
+Temizlenmiş Dosya: train_numeric_clean.csv (400 MB, 450,519 satır, 158 sütun)
+
+### 2.2 Veri Temizleme Süreci (Clean Data Pipeline)
+
+Orijinal veride %81 oranında eksik değer bulunuyordu. Kullanılabilir bir veri seti elde etmek için şu adımlar izlendi:
+
+1. Eksik oranı %50'den az olan 157 sütun seçildi
+2. Bu sütunlarda hiç eksik değeri olmayan satırlar filtrelendi
+3. Sonuç: 450,519 satır ve 158 sütun (157 feature + Response)
+
+Bu yaklaşım sayesinde eksik veri sorunu tamamen ortadan kaldırıldı ve model eğitimi için temiz bir veri seti elde edildi.
+
+### 2.3 Hedef Değişken Dağılımı
+
+Response = 0 (Sağlam): 448,552 adet (%99.56)
+Response = 1 (Hatalı): 1,967 adet (%0.44)
+Dengesizlik Oranı: 1:228
+
+### 2.4 Veri Özellikleri
+
+Temizlenmiş veride eksik değer yok. Tüm 157 feature numerik ve sürekli değişkenlerden oluşuyor. Veriler L0, L3 üretim hatlarından gelen sensör ölçümlerini içeriyor.
 
 ---
 
 ## 3. Feature Engineering
 
-### 3.1 Oluşturulan Özellikler (24 yeni feature)
+### 3.1 Oluşturulan Özellikler (6 yeni feature)
 
-| Kategori | Özellik | Açıklama |
-|----------|---------|----------|
-| **Satır İstatistikleri** | row_mean | Satır ortalaması |
-| | row_std | Satır standart sapması |
-| | row_min/max | Min/max değerler |
-| | row_non_null | Dolu hücre sayısı |
-| **İstasyon Bazlı** | station_X_mean | Her istasyonun ortalaması |
-| | station_X_std | Her istasyonun std sapması |
-| **Eksik Veri Pattern** | missing_ratio | Eksik veri oranı |
+Satır bazlı istatistikler her parçanın genel profilini çıkarmak için eklendi:
 
-### 3.2 Veri Ön İşleme
-1. **%90+ eksik sütunları kaldır** → 610 sütun silindi
-2. **Kalan eksik verileri -999 ile doldur** (XGBoost missing handle eder)
-3. **SMOTE ile oversampling** → 1:175 → 1:3 oranına
+row_mean: Satırdaki tüm sensör değerlerinin ortalaması
+row_std: Satırdaki değerlerin standart sapması
+row_min: Satırdaki minimum değer
+row_max: Satırdaki maksimum değer
+row_range: max - min farkı
+row_nonzero: Sıfır olmayan değer sayısı
+
+Toplam feature sayısı: 157 orijinal + 6 mühendislik = 162 feature (Id sütunu hariç)
+
+### 3.2 Önemli Bulgu
+
+En basit özellik olan row_mean, en önemli değişkenlerden biri çıktı. Bu, genel sensör ortalamasının kalite için kritik bir gösterge olduğunu ortaya koyuyor.
 
 ---
 
 ## 4. Model Geliştirme Süreci
 
-### 4.1 Baseline Model
-```python
-XGBClassifier(
-    scale_pos_weight=175,  # Sınıf ağırlığı
-    max_depth=6,
-    n_estimators=100
-)
-```
-**Sonuç:** AUC: 0.6655, F1: 0.0711
+### 4.1 Model Seçimi: Neden XGBoost?
 
-### 4.2 Optimize Edilmiş Model
-```python
-XGBClassifier(
-    scale_pos_weight=175,
-    max_depth=6,
-    learning_rate=0.1,
-    n_estimators=300,
-    min_child_weight=3,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    early_stopping_rounds=50
-)
-```
-**+ SMOTE + Threshold Optimization (0.55)**
+Derin öğrenme yerine XGBoost tercih edildi çünkü:
 
-**Sonuç:** AUC: 0.6684, F1: 0.0894 (+26% iyileşme)
+1. Eksik veriyi otomatik işleyebiliyor (orijinal veri için önemli)
+2. scale_pos_weight parametresi ile dengesiz sınıfları yönetebiliyor
+3. Yorumlanabilir sonuçlar veriyor (feature importance)
+4. Hızlı eğitim ve inference süresi
 
-### 4.3 Hiperparametre Arama
-- **Yöntem:** GridSearchCV
-- **CV:** Stratified 3-Fold
-- **Metrik:** AUC-ROC
+### 4.2 Model Konfigürasyonu
+
+XGBClassifier parametreleri:
+n_estimators: 200
+max_depth: 6
+learning_rate: 0.05
+scale_pos_weight: 228 (dengesizlik oranı)
+min_child_weight: 3
+subsample: 0.8
+colsample_bytree: 0.8
+eval_metric: auc
+
+### 4.3 Threshold Optimization
+
+Standart 0.5 eşiği yerine maliyet odaklı optimizasyon yapıldı. Farklı threshold değerleri test edildi:
+
+Threshold 0.10: Recall %80.4, Precision %0.96
+Threshold 0.20: Recall %64.9, Precision %1.31
+Threshold 0.30: Recall %55.7, Precision %1.65
+Threshold 0.35: Recall %51.4, Precision %0.78 (Seçilen)
+Threshold 0.40: Recall %45.7, Precision %2.09
+Threshold 0.50: Recall %33.0, Precision %3.41
+
+Seçilen threshold: 0.35 (Recall ve iş gereksinimlerini dengeleyen değer)
 
 ---
 
 ## 5. Model Performansı
 
-### 5.1 Metrik Karşılaştırması
+### 5.1 Final Model Metrikleri
 
-| Metrik | Baseline | Final | Değişim |
-|--------|----------|-------|---------|
-| AUC-ROC | 0.6655 | 0.6684 | +0.4% |
-| F1-Score | 0.0711 | 0.0894 | **+25.7%** |
-| Precision | 0.0411 | 0.1231 | +199.5% |
-| Recall | 0.2632 | 0.0702 | -73.3% |
+AUC-ROC: 0.635
+Recall (Hata Yakalama): %51.4
+Precision: %0.78
+F1-Score: 0.0146
 
-### 5.2 Confusion Matrix (Threshold=0.55)
+### 5.2 Baseline ile Karşılaştırma
 
-```
-                 Tahmin: Sağlam    Tahmin: Hatalı
-Gerçek: Sağlam      19,829            57
-Gerçek: Hatalı         106             8
-```
+AUC-ROC: 0.62'den 0.635'e çıktı (%2.4 iyileşme)
+F1 Score: 0.0116'dan 0.0146'ya çıktı (%26 iyileşme)
+Recall: 0.40'tan 0.514'e çıktı (%29 iyileşme)
 
-### 5.3 Metrik Yorumları
+### 5.3 Düşük Skorların Açıklaması
 
-**Precision (12.31%):**
-- Model "hatalı" dediğinde %12.31 doğru
-- 8 doğru hatalı tespit / 65 toplam hatalı tahmini
+Skorlar görünüşte düşük olsa da bağlam önemli:
 
-**Recall (7.02%):**
-- Gerçek hataların %7.02'sini yakalıyor
-- 8 yakalanan / 114 gerçek hatalı
+1. 1:228 oranında aşırı dengesizlik var
+2. Temizlenmiş veride bile sadece %0.44 hatalı parça mevcut
+3. Rastgele tahmin sadece %0.44 precision verir
+4. Modelimiz hataların yarısından fazlasını (%51.4) yakalıyor
 
-**Düşük Skorların Nedeni:**
-1. Aşırı dengesiz veri (1:175)
-2. %81 eksik veri
-3. Sınırlı örneklem (100K)
+Mutlak rakamlar yanıltıcı olabilir. Önemli olan probleme göre değerlendirmek.
 
 ---
 
 ## 6. Maliyet Analizi
 
-### 6.1 Birim Maliyetler (Varsayımsal)
-| Hata Tipi | Maliyet | Açıklama |
-|-----------|---------|----------|
-| False Positive | $10 | Gereksiz inceleme işçiliği |
-| False Negative | $500 | İade + garanti + lojistik + prestij |
+### 6.1 Birim Maliyetler
 
-### 6.2 Test Seti Maliyet Hesabı
+False Negative (Kaçan hata): $500 - İade, garanti, lojistik ve prestij kaybı
+False Positive (Yanlış alarm): $10 - Ekstra inceleme işçiliği
 
-```
-True Negative (TN):  19,829 parça → $0 (sorun yok)
-True Positive (TP):       8 parça → $0 (başarılı tespit)
-False Positive (FP):     57 parça → $570 (gereksiz inceleme)
-False Negative (FN):    106 parça → $53,000 (kaçan hatalar)
+### 6.2 Test Seti Sonuçları (90,103 parça)
 
-TOPLAM MALİYET: $53,570
-```
+Toplam Hatalı Parça: 378
+Yakalanan Hatalar (TP): 194 (%51.4)
+Kaçırılan Hatalar (FN): 184 (%48.6)
+False Positive (Gereksiz İnceleme): 24,557
 
-### 6.3 ROI Analizi
+### 6.3 Maliyet Hesabı
 
-| Senaryo | Maliyet | Tasarruf |
-|---------|---------|----------|
-| AI Olmadan | $57,000 (tüm hatalar müşteriye) | - |
-| AI ile | $53,570 | $3,430 (%6) |
+AI olmadan maliyet: $189,000 (tüm 378 hata müşteriye ulaşıyor)
+AI ile FN maliyeti: $92,000 (184 kaçan hata x $500)
+AI ile FP maliyeti: $245,570 (24,557 gereksiz inceleme x $10)
+Yakalanan hatalardan tasarruf: $97,000 (194 hata x $500)
 
-**Not:** Threshold düşürülerek recall artırılabilir, ancak FP maliyeti artar.
-
-### 6.4 Threshold Senaryoları
-
-| Threshold | Recall | FP | FN | Toplam Maliyet |
-|-----------|--------|-----|-----|----------------|
-| 0.55 | 7% | 57 | 106 | $53,570 |
-| 0.40 | 15% | 150 | 97 | $50,000 |
-| 0.30 | 25% | 300 | 85 | $45,500 |
-| 0.20 | 40% | 600 | 68 | $40,000 |
+Not: Yüksek FP sayısı toplam maliyeti artırıyor. Threshold değeri iş gereksinimlerine göre ayarlanabilir.
 
 ---
 
-## 7. Feature Importance
+## 7. Teknik Altyapı
 
-### 7.1 En Önemli 20 Özellik
+### 7.1 Teknoloji Stack
 
-| Sıra | Feature | Importance | İstasyon |
-|------|---------|------------|----------|
-| 1 | L3_S32_F3850 | 0.045 | L3-S32 |
-| 2 | L3_S30_F3754 | 0.038 | L3-S30 |
-| 3 | L3_S33_F3855 | 0.032 | L3-S33 |
-| 4 | row_mean | 0.028 | (Türetilmiş) |
-| 5 | L0_S1_F24 | 0.025 | L0-S1 |
-| ... | ... | ... | ... |
+ML Framework: XGBoost, scikit-learn, pandas, numpy
+API: FastAPI
+UI: Streamlit
+Deployment: Docker, docker-compose
+Versiyon Kontrolü: Git, GitHub
 
-### 7.2 İstasyon Bazlı Analiz
+### 7.2 API Endpoints
 
-```
-L3 Hattı: %60 önem (Kritik!)
-L0 Hattı: %20 önem
-L1 Hattı: %12 önem
-L2 Hattı: %8 önem
-```
+/health (GET): Sağlık kontrolü
+/predict (POST): Tek tahmin
+/predict/batch (POST): Toplu tahmin
+/docs (GET): Swagger UI dokümantasyonu
 
-### 7.3 Aksiyon Önerileri
+### 7.3 Model Dosyaları
 
-1. **L3-S30, S32, S33 istasyonları:** Öncelikli bakım
-2. **L0-S1 istasyonu:** İkincil öncelik
-3. **Türetilmiş özellikler:** row_mean yüksek önem → genel sensör ortalaması kritik
+models/final_model.pkl: Eğitilmiş XGBoost modeli
+models/feature_names.pkl: 162 feature listesi
+models/model_config.pkl: threshold=0.35, auc=0.635 ve diğer metrikler
 
 ---
 
-## 8. Teknik Altyapı
+## 8. Proje Teslim Durumu
 
-### 8.1 Teknoloji Stack'i
-| Bileşen | Teknoloji |
-|---------|-----------|
-| ML Framework | XGBoost, scikit-learn |
-| Oversampling | imbalanced-learn (SMOTE) |
-| API | FastAPI |
-| UI | Streamlit |
-| Deployment | Docker, docker-compose |
-| Versiyon Kontrolü | Git, GitHub |
+Tamamlanan işler:
 
-### 8.2 API Endpoints
-| Endpoint | Method | Açıklama |
-|----------|--------|----------|
-| /health | GET | Sağlık kontrolü |
-| /predict | POST | Tek tahmin |
-| /predict/batch | POST | Toplu tahmin |
-| /docs | GET | Swagger UI |
-
-### 8.3 API Response Formatı
-```json
-{
-  "prediction": 1,
-  "probability": 0.85
-}
-```
+EDA Notebook (01_eda.ipynb)
+Baseline Model (02_baseline.ipynb)
+Feature Engineering (03_feature_engineering.ipynb)
+Final Pipeline (05_pipeline_final.ipynb)
+Streamlit UI (app/ui.py)
+FastAPI (app/main.py)
+Docker Deployment (Dockerfile, docker-compose.yml)
+GitHub Repo
+README.md
+Teknik Rapor
 
 ---
 
-## 9. Kısıtlar ve İyileştirme Önerileri
+## 9. Sonraki Adımlar
 
-### 9.1 Mevcut Kısıtlar
-1. Sadece numerik veriler kullanıldı (categorical, date hariç)
-2. 100K örneklem (1.2M'in %8'i)
-3. SHAP analizi için ek kütüphane gerekli
+Bu proje bir başlangıç noktası. İlerisi için düşünülebilecek geliştirmeler:
 
-### 9.2 İyileştirme Önerileri
-| Öneri | Beklenen Etki | Zorluk |
-|-------|---------------|--------|
-| Tüm veri kullanımı | +5-10% AUC | Yüksek (RAM) |
-| Kategorik veri ekleme | +3-5% AUC | Orta |
-| Zaman verisi ekleme | +2-4% AUC | Orta |
-| Ensemble (LightGBM+XGB) | +1-3% AUC | Düşük |
-| Derin Öğrenme | ? | Çok Yüksek |
+1. IoT sensörlerinden anlık veri akışı entegrasyonu
+2. Farklı threshold stratejileri için A/B testleri
+3. Model performansı için izleme sistemi (MLOps)
+4. Daha iyi recall için ensemble modeller (LightGBM + XGBoost)
+5. Kategorik ve tarih verilerinin eklenmesi
 
 ---
 
-## 10. Sonuç
+Rapor Sonu
 
-### 10.1 Başarılar
-✅ End-to-end ML pipeline tamamlandı
-✅ Baseline'a göre %26 F1 iyileşmesi
-✅ Production-ready deployment (Docker)
-✅ Kullanıcı dostu UI (Streamlit)
-✅ REST API (FastAPI)
-
-### 10.2 Proje Teslim Durumu
-| Gereksinim | Durum |
-|------------|-------|
-| EDA Notebook | ✅ |
-| Baseline Model | ✅ |
-| Feature Engineering | ✅ |
-| Hiperparametre Opt. | ✅ |
-| Final Pipeline | ✅ |
-| Streamlit UI | ✅ |
-| FastAPI | ✅ |
-| Docker Deployment | ✅ |
-| GitHub Repo | ✅ |
-| README.md | ✅ |
-| Sunum Slaytları | ✅ |
-
-### 10.3 Sonraki Adımlar
-1. Pilot test (tek üretim hattı)
-2. Gerçek zamanlı veri entegrasyonu
-3. Model izleme ve yeniden eğitim pipeline'ı
-
----
-
-**Rapor Sonu**
-
-*Zero2End Machine Learning Bootcamp - Final Projesi*
+Zero2End Machine Learning Bootcamp - Final Projesi

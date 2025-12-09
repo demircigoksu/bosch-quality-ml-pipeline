@@ -34,8 +34,8 @@ End-to-end machine learning projesi: Bosch üretim hattındaki parçaların kali
 | **Problem** | Üretim hattında hatalı parça tespiti (Failure Prediction) |
 | **Veri Seti** | [Kaggle - Bosch Production Line Performance](https://www.kaggle.com/c/bosch-production-line-performance) |
 | **Problem Tipi** | Binary Classification (0: Sağlam, 1: Hatalı) |
-| **Zorluklar** | Aşırı dengesiz veri (1:175), %81 eksik veri, 968 özellik |
-| **Çözüm** | XGBoost + SMOTE + Threshold Optimization |
+| **Zorluklar** | Aşırı dengesiz veri (1:228), %81 eksik veri, 968 özellik |
+| **Çözüm** | XGBoost + Feature Engineering + Threshold Optimization |
 
 ---
 
@@ -61,17 +61,16 @@ Yapay zeka tabanlı erken uyarı sistemi ile hatalı parçaları üretim hattın
 
 | Metrik | Baseline | Final Model | İyileşme |
 |--------|----------|-------------|----------|
-| **AUC-ROC** | 0.6655 | 0.6684 | +0.4% |
-| **F1-Score** | 0.0711 | 0.0894 | **+25.7%** |
-| **Precision** | 0.0411 | 0.1231 | +199.5% |
-| **Recall** | 0.2632 | 0.0702 | - |
+| **AUC-ROC** | 0.62 | 0.635 | +2.4% |
+| **F1-Score** | 0.0116 | 0.0146 | **+26%** |
+| **Precision** | 0.0062 | 0.0078 | +26% |
+| **Recall** | 0.40 | 0.514 | +29% |
 
 ### Uygulanan Teknikler
-- ✅ **Feature Engineering:** İstasyon bazlı istatistikler, eksik veri pattern'leri (24 yeni özellik)
-- ✅ **SMOTE:** Dengesiz veriyi 1:175 → 1:3 oranına getirme
-- ✅ **XGBoost:** Early stopping ile 300 ağaç
-- ✅ **Threshold Optimization:** F1 için optimal eşik değeri (0.55)
-- ✅ **GridSearchCV:** Hiperparametre optimizasyonu
+- ✅ **Clean Data Pipeline:** Missing oranı <%50 olan 157 sütun, eksik değeri olmayan satırlar
+- ✅ **Feature Engineering:** Satır bazlı istatistikler (6 yeni özellik)
+- ✅ **XGBoost:** scale_pos_weight=228 ile dengesizlik yönetimi
+- ✅ **Threshold Optimization:** Recall-optimize edilmiş eşik değeri (0.35)
 
 ### Confusion Matrix (Test: 20,000 parça)
 ```
@@ -198,9 +197,9 @@ bosch-quality-ml-pipeline/
 ## 📓 Notebook'lar
 
 ### 1. EDA (01_eda.ipynb)
-- Veri yükleme ve örnekleme (100K satır)
-- Hedef değişken analizi (**Class Imbalance: 1:175**)
-- Eksik veri analizi (**%81 ortalama**)
+- Veri yükleme (450,519 satır temizlenmiş veri)
+- Hedef değişken analizi (**Class Imbalance: 1:228**)
+- Eksik veri analizi (**%81 ortalama** - temizleme öncesi)
 - İstasyon ve üretim hattı analizi
 
 ### 2. Baseline Model (02_baseline.ipynb)
@@ -267,25 +266,26 @@ bosch-quality-ml-pipeline/
 ### Veri Seti Özellikleri
 | Özellik | Değer |
 |---------|-------|
-| Toplam satır | 1,183,747 |
-| Toplam sütun | 970 |
-| Kullanılan örneklem | 100,000 |
-| Hedef dağılımı | 99.43% / 0.57% |
-| Eksik veri | %81 ortalama |
-| Üretim hatları | L0, L1, L2, L3 |
+| Orijinal satır | 1,183,747 |
+| Orijinal sütun | 970 |
+| Temizlenmiş satır | 450,519 |
+| Temizlenmiş sütun | 158 (157 feature + Response) |
+| Hedef dağılımı | 99.56% / 0.44% (1:228) |
+| Eksik veri | %0 (temizlenmiş) |
+| Üretim hatları | L0, L3 |
 
 ### Model Konfigürasyonu
 ```python
 XGBClassifier(
     objective='binary:logistic',
-    scale_pos_weight=175,
+    scale_pos_weight=228,
     max_depth=6,
-    learning_rate=0.1,
-    n_estimators=300,
+    learning_rate=0.05,
+    n_estimators=200,
     min_child_weight=3,
     subsample=0.8,
     colsample_bytree=0.8,
-    early_stopping_rounds=50,
+    eval_metric='auc',
     random_state=42
 )
 ```
