@@ -1,165 +1,170 @@
-# Bosch Quality ML Pipeline
+# 🏭 Bosch Quality ML Pipeline
 
-End-to-end machine learning project for detecting manufacturing failures in the Bosch production dataset. This project implements a complete ML pipeline from exploratory data analysis to deployment with REST API and interactive UI.
+**Zero2End Machine Learning Bootcamp - Final Projesi**
 
-## 🎯 Project Overview
+End-to-end machine learning projesi: Bosch üretim hattındaki parçaların kalite kontrol testlerinden geçip geçmediğini tahmin eden bir sistem.
 
-This project tackles the **Bosch Production Line Performance** problem - a binary classification task to predict manufacturing failures based on production line measurements. Early detection of failures can help:
-- Reduce waste and improve product quality
-- Optimize production processes
-- Minimize costs associated with defects
-- Improve overall manufacturing efficiency
+## 🎯 Proje Özeti
 
-## 📊 Dataset
+| | |
+|---|---|
+| **Problem** | Üretim hattında hatalı parça tespiti (Failure Prediction) |
+| **Veri Seti** | [Kaggle - Bosch Production Line Performance](https://www.kaggle.com/c/bosch-production-line-performance) |
+| **Problem Tipi** | Binary Classification (0: Sağlam, 1: Hatalı) |
+| **Zorluklar** | Aşırı dengesiz veri (1:175), %81 eksik veri, 968 özellik |
 
-The Bosch dataset contains anonymized production line measurements with:
-- **Target variable**: Binary indicator of product failure (0 = no failure, 1 = failure)
-- **Features**: Thousands of anonymized sensor measurements from the production line
-- **Challenge**: Highly imbalanced dataset with sparse features and missing values
+## 📊 Model Performansı
 
-## 🏗️ Project Structure
+| Metrik | Baseline | Final Model | İyileşme |
+|--------|----------|-------------|----------|
+| **AUC-ROC** | 0.6655 | 0.6684 | +0.4% |
+| **F1-Score** | 0.0711 | 0.0894 | **+25.7%** |
+| **Precision** | 0.0411 | 0.1231 | +199.5% |
+| **Recall** | 0.2632 | 0.0702 | - |
+
+### 🔧 Uygulanan Teknikler:
+- **Feature Engineering:** İstasyon bazlı istatistikler, eksik veri pattern'leri (24 yeni özellik)
+- **SMOTE:** Dengesiz veriyi 1:175 → 1:3 oranına getirme
+- **XGBoost:** Early stopping ile 300 ağaç
+- **Threshold Optimization:** F1 için optimal eşik değeri (0.55)
+
+## 📈 Veri Seti Özellikleri
+
+- **Boyut:** 1.2M satır × 970 sütun (Sample: 100K satır)
+- **Hedef Dağılımı:** %99.43 Sağlam, %0.57 Hatalı
+- **Eksik Veri:** Ortalama %81
+- **Üretim Hatları:** L0, L1, L2, L3 (4 ana hat, ~50 istasyon)
+
+## 🏗️ Proje Yapısı
 
 ```
 bosch-quality-ml-pipeline/
-├── data/                       # Data directory (train/test CSV files)
-├── notebooks/                  # Jupyter notebooks for analysis
-│   ├── 01_eda.ipynb           # Exploratory Data Analysis
-│   ├── 02_baseline.ipynb      # Baseline model development
-│   └── 03_pipeline.ipynb      # Full ML pipeline development
-├── src/                        # Source code modules
-│   ├── config.py              # Configuration parameters
-│   ├── train.py               # Model training pipeline
-│   └── inference.py           # Inference and prediction logic
-├── app/                        # Application deployment
-│   ├── main.py                # FastAPI REST API
-│   └── ui.py                  # Streamlit interactive UI
-├── models/                     # Saved model artifacts
-├── docs/                       # Documentation
-├── requirements.txt           # Python dependencies
-└── README.md                  # This file
+├── data/                          # Veri klasörü (train_numeric.csv)
+├── notebooks/                     # Jupyter notebook'ları
+│   ├── 01_eda.ipynb              # Keşifçi Veri Analizi
+│   ├── 02_baseline.ipynb         # Baseline Model (XGBoost)
+│   ├── 03_feature_engineering.ipynb  # Feature Engineering & Optimization
+│   └── 03_pipeline.ipynb         # ML Pipeline
+├── src/                           # Kaynak kodları
+│   ├── config.py                 # Konfigürasyon parametreleri
+│   ├── train.py                  # Model eğitim scripti
+│   └── inference.py              # Tahmin modülü
+├── app/                           # Deployment
+│   ├── main.py                   # FastAPI REST API
+│   └── ui.py                     # Streamlit Arayüzü
+├── models/                        # Eğitilmiş modeller (.pkl)
+├── docs/                          # Görseller ve dokümantasyon
+├── Dockerfile                     # Docker image tanımı
+├── docker-compose.yml            # Container orchestration
+└── requirements.txt              # Python bağımlılıkları
 ```
 
-## 🚀 Getting Started
+## 🚀 Kurulum ve Çalıştırma
 
-### Prerequisites
+### Docker ile (Önerilen)
 
-- Python 3.8 or higher
-- pip package manager
-
-### Installation
-
-1. Clone the repository:
 ```bash
+# Repo'yu klonla
 git clone https://github.com/demircigoksu/bosch-quality-ml-pipeline.git
 cd bosch-quality-ml-pipeline
+
+# Docker container'ları başlat
+docker-compose up -d
+
+# Erişim:
+# API: http://localhost:8080
+# UI:  http://localhost:8501
 ```
 
-2. Install dependencies:
+### Manuel Kurulum
+
 ```bash
+# Virtual environment oluştur
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# Bağımlılıkları yükle
 pip install -r requirements.txt
-```
 
-3. Download the Bosch dataset and place it in the `data/` directory:
-   - `train.csv` - Training data
-   - `test.csv` - Test data
+# Veriyi data/ klasörüne koy
+# Kaggle'dan train_numeric.csv indir
 
-## 📓 Usage
+# API başlat
+uvicorn app.main:app --host 0.0.0.0 --port 8080
 
-### 1. Exploratory Data Analysis
-
-Start with the notebooks to understand the data:
-```bash
-jupyter notebook notebooks/01_eda.ipynb
-```
-
-### 2. Model Training
-
-Train the model using the training pipeline:
-```bash
-python src/train.py
-```
-
-This will:
-- Load and preprocess the training data
-- Train an XGBoost classifier
-- Evaluate performance on test set
-- Save the trained model to `models/`
-
-### 3. Making Predictions
-
-Use the inference module for predictions:
-```bash
-python src/inference.py
-```
-
-### 4. REST API Deployment
-
-Launch the FastAPI server:
-```bash
-python app/main.py
-```
-
-The API will be available at `http://localhost:8000`
-- Interactive docs: `http://localhost:8000/docs`
-- Health check: `http://localhost:8000/health`
-
-**API Endpoints:**
-- `POST /predict` - Single prediction
-- `POST /predict/batch` - Batch predictions
-
-### 5. Interactive UI
-
-Launch the Streamlit application:
-```bash
+# UI başlat (yeni terminal)
 streamlit run app/ui.py
 ```
 
-The UI provides:
-- Single sample prediction
-- Batch prediction
-- CSV file upload for bulk predictions
-- Interactive visualizations
+## 📓 Notebook'lar
 
-## 🔧 Configuration
+### 1. EDA (01_eda.ipynb)
+- Veri yükleme ve örnekleme (100K satır)
+- Hedef değişken analizi (Class Imbalance: 1:175)
+- Eksik veri analizi (%81 ortalama)
+- İstasyon ve üretim hattı analizi
 
-All configuration parameters are in `src/config.py`:
-- Model hyperparameters
-- Data paths
-- Feature engineering settings
-- API configuration
+### 2. Baseline Model (02_baseline.ipynb)
+- XGBoost ile ilk model
+- scale_pos_weight ile dengesizlik yönetimi
+- AUC-ROC: 0.6655, F1: 0.0711
 
-## 📦 Dependencies
+### 3. Feature Engineering (03_feature_engineering.ipynb)
+- 24 yeni özellik (satır istatistikleri, istasyon bazlı agregasyonlar)
+- SMOTE ile oversampling
+- Threshold optimization
+- Final: AUC-ROC: 0.6684, F1: 0.0894
 
-- **pandas** - Data manipulation and analysis
-- **numpy** - Numerical computing
-- **scikit-learn** - Machine learning algorithms and utilities
-- **xgboost** - Gradient boosting framework
-- **fastapi** - Modern web framework for APIs
-- **uvicorn** - ASGI server for FastAPI
-- **streamlit** - Interactive web applications
-- **matplotlib** - Data visualization
+## 🔌 API Endpoints
 
-## 🎯 Model Performance
+| Endpoint | Method | Açıklama |
+|----------|--------|----------|
+| `/health` | GET | Sağlık kontrolü |
+| `/predict` | POST | Tek tahmin |
+| `/predict/batch` | POST | Toplu tahmin |
+| `/docs` | GET | Swagger dokümantasyonu |
 
-The model uses XGBoost for classification with:
-- Matthews Correlation Coefficient (MCC) for evaluation
-- ROC-AUC score for imbalanced data
-- Handles missing values and sparse features
-- Feature selection based on missing value threshold
+## 🖼️ Ekran Görüntüleri
 
-## 🤝 Contributing
+### Model Sonuçları
+![Final Model Results](docs/final_model_results.png)
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+### Feature Importance
+![Feature Importance](docs/feature_importance.png)
 
-## 📝 License
+### Threshold Optimization
+![Threshold Optimization](docs/threshold_optimization.png)
 
-This project is open source and available under the MIT License.
+## 📦 Bağımlılıklar
 
-## 👥 Authors
+- **pandas** - Veri işleme
+- **numpy** - Sayısal hesaplamalar
+- **scikit-learn** - ML algoritmaları
+- **xgboost** - Gradient boosting
+- **imbalanced-learn** - SMOTE
+- **fastapi** - REST API
+- **uvicorn** - ASGI server
+- **streamlit** - Web arayüzü
+- **matplotlib/seaborn** - Görselleştirme
 
-- Göksu Demirci
+## 🎓 Zero2End ML Bootcamp
 
-## 🙏 Acknowledgments
+Bu proje, Zero2End Machine Learning Bootcamp final projesi gereksinimlerini karşılamaktadır:
+- ✅ Tabular veri seti (Kaggle)
+- ✅ Binary classification problemi
+- ✅ EDA + Feature Engineering + Model Pipeline
+- ✅ Deployment (API + UI + Docker)
+- ✅ GitHub repository
 
-- Bosch for providing the dataset
-- Kaggle competition community
+## 👤 Yazar
+
+**Göksu Demirci**
+- GitHub: [@demircigoksu](https://github.com/demircigoksu)
+
+## 📝 Lisans
+
+MIT License
+
+---
+
+*Bu proje, Bosch Production Line Performance veri seti kullanılarak geliştirilmiştir.*
