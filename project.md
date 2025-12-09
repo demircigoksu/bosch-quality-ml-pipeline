@@ -109,8 +109,9 @@ Bu bölüm, AI Agent'lara adım adım verilecek talimatları içerir.
   * **Amaç:** Teknik olmayan birinin modeli kullanabilmesi.
   * **Teknoloji:** Streamlit.
   * **Arayüz Tasarımı:**
+      * https://bosch-quality-app.onrender.com/ sitesi için kullanılacaktır.
       * Kullanıcıya tek tek 1000 input girdirmek imkansızdır.
-      * **Çözüm:** "Load Random Sample" veya "Upload CSV" butonu.
+      * **Çözüm:** "Load Random Sample" veya "Upload CSV" butonu. 200 mb sınır koyma daha fazla olsun.
       * Kullanıcı butona basar -\> Sistem test verisinden rastgele bir satır çeker -\> Model tahmin eder -\> Ekrana **"Ürün Sağlam ✅"** veya **"Ürün Hatalı ❌"** yazar.
 
 ### **ADIM 7: Sunum ve Dokümantasyon (Opsiyonel ama Önerilen)**
