@@ -15,8 +15,9 @@ RUN pip install --upgrade pip && \
 
 COPY . .
 
-RUN mkdir -p data models
+RUN mkdir -p data models .streamlit
+COPY .streamlit/config.toml .streamlit/
 
 EXPOSE ${PORT}
 
-CMD streamlit run app/ui.py --server.port=${PORT} --server.address=0.0.0.0 --server.headless=true
+CMD streamlit run app/ui.py --server.port=${PORT} --server.address=0.0.0.0 --server.headless=true --server.maxUploadSize=500

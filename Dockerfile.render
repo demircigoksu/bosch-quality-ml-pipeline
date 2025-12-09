@@ -19,7 +19,8 @@ RUN pip install --upgrade pip && \
 
 COPY . .
 
-RUN mkdir -p data models
+RUN mkdir -p data models .streamlit
+COPY .streamlit/config.toml .streamlit/
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:${PORT}/health || exit 1
@@ -30,4 +31,5 @@ CMD streamlit run app/ui.py \
     --server.port=${PORT} \
     --server.address=0.0.0.0 \
     --server.headless=true \
+    --server.maxUploadSize=500 \
     --browser.gatherUsageStats=false
