@@ -83,6 +83,21 @@ Gerçek: Hatalı         106             8
 
 ## 🚀 Kurulum
 
+### ⚠️ Veri Dosyaları (Önemli!)
+
+Bu proje büyük veri dosyaları kullanmaktadır. GitHub'ın dosya boyutu limiti nedeniyle veriler repo'ya dahil edilmemiştir.
+
+**📥 Temizlenmiş veri dosyalarını indirin:**
+> **[Google Drive - Temizlenmiş Veriler](https://drive.google.com/drive/folders/1-Qobnb-MZkYQ3-Gi2JaQKZ4H185CuYex?usp=drive_link)**
+
+İndirilen dosyaları `data/` klasörüne yerleştirin:
+- `train_numeric_clean.csv` - Eğitim verisi (temizlenmiş)
+- `test_numeric_clean_alt.csv` - Test verisi (temizlenmiş)
+
+> **Not:** Orijinal ham veriyi kullanmak isterseniz [Kaggle - Bosch Production Line Performance](https://www.kaggle.com/c/bosch-production-line-performance) adresinden `train_numeric.csv` dosyasını indirebilirsiniz.
+
+---
+
 ### Docker ile (Önerilen)
 
 ```bash
@@ -90,9 +105,8 @@ Gerçek: Hatalı         106             8
 git clone https://github.com/demircigoksu/bosch-quality-ml-pipeline.git
 cd bosch-quality-ml-pipeline
 
-# 2. Veriyi indir
-# Orijinal veri: Kaggle'dan train_numeric.csv indirip data/ klasörüne koy
-# Temizlenmiş veri: https://drive.google.com/drive/folders/1-Qobnb-MZkYQ3-Gi2JaQKZ4H185CuYex?usp=drive_link
+# 2. Veriyi indir (yukarıdaki Google Drive linkinden)
+# Dosyaları data/ klasörüne yerleştirin
 
 # 3. Docker container'ları başlat
 docker-compose up -d
