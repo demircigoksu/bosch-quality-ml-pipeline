@@ -234,4 +234,55 @@ Sadece Streamlit ile lokalde çalışmak yeterli olsa da, projeyi "Production Re
 
 ---
 
+## **11. FİNAL GÖREVİ: YAYGINLAŞTIRMA VE BLOG OLUŞTURMA**
+
+Projenin teknik kısımları tamamlanmıştır. Şimdi projenin vitrinini oluşturmak için aşağıdaki iki görevi sırasıyla gerçekleştir.
+
+### **GÖREV A: Medium Blog Yazısı Hazırla (`docs/medium_blog_post.md`)**
+
+* **Amaç:** Projenin teknik ve iş değerini anlatan profesyonel bir makale oluşturmak.
+* **İşlem:** Proje kök dizininde `docs/` klasörü altına `medium_blog_post.md` adında bir dosya oluştur ve içeriği oraya yaz.
+* **İçerik Formatı:** "Towards Data Science" kalitesinde, başlıkları ve kod blokları olan Markdown formatı.
+* **Makale Akışı:**
+    1.  **Başlık:** Çarpıcı bir başlık (Örn: "Manufacturing Intelligence: Preventing Failures with XGBoost").
+    2.  **Giriş:** Üretimdeki hataların maliyeti (ROI ve Business Value odaklı).
+    3.  **Problem:** Bosch veri setinin zorlukları (Dengesiz veri, Büyük boyut, Seyreklik).
+    4.  **Çözüm:** Neden XGBoost seçildi? Neden Pipeline mimarisi kuruldu?
+    5.  **Teknik Detaylar:** Veri işleme (Sampling), Threshold optimizasyonu ve "False Negative" maliyet analizi.
+    6.  **Deployment:** FastAPI ve Streamlit ile canlı simülasyon kurgusu, Docker kullanımı.
+    7.  **Sonuç:** GitHub repo linki için bir yer tutucu (placeholder).
+
+### **GÖREV B: Render.com Deployment Rehberi Oluştur**
+
+* **Amaç:** Geliştiricinin projeyi `onrender.com` üzerinde canlıya alabilmesi için gerekli teknik adımları sunmak.
+* **Çıktı:** Terminal komutlarını ve dosya içeriklerini açıklayan adım adım bir rehber (Türkçe).
+* **Kapsam:**
+    1.  **Dockerfile Oluşturma:** Python 3.9+, Streamlit ve FastAPI portlarını (8501, 8000) kapsayan, `CMD` komutu doğru ayarlanmış `Dockerfile` içeriğini ver.
+    2.  **Bağımlılık Kontrolü:** `requirements.txt` dosyasının deployment için yeterli olup olmadığını kontrol et.
+    3.  **Git Komutları:** Projeyi GitHub'a pushlamak için gerekli terminal komutları.
+    4.  **Render Dashboard Ayarları:** Render üzerinde "Web Service" oluştururken Docker Runtime'ın nasıl seçileceği ve Environment Variable gerekip gerekmediği bilgisi.
+
+---
+
 **NOT:** Bu proje "Zero2End Machine Learning Bootcamp" final projesi isterlerine (Tabular data, Kaggle source, Pipeline structure, Deployment) %100 uyumludur.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -9,7 +9,7 @@ services:
   # Streamlit Web Uygulaması (Ana Servis)
   - type: web
     name: bosch-quality-ml
-    env: docker
+    runtime: docker
     dockerfilePath: ./Dockerfile.render
     dockerContext: .
     plan: free
