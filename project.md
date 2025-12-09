@@ -144,10 +144,16 @@ Bu bölüm, AI Agent'lara adım adım verilecek talimatları içerir.
 
 -----
 
-## **6. README.MD DOSYASINI DÜZENLE**
+## **6. : Deployment ve Arayüz - `app/ui.py` & `app/main.py`**
 
-  * **Readme.md:** Elimizdeki tüm bilgileri analiz et ve bu dosyayı güncelle.
-  * **Diğer:** Proje dosyalarının (bosch-quality-ml-pipeline altındaki) hepsini kontrol et.
+* **Amaç:** Modeli hem son kullanıcı (Operatör) hem de sistemler (Robotlar) için erişilebilir kılmak.
+* **Backend (FastAPI):**
+    * `app/main.py` içinde `/predict` endpoint'i oluştur.
+    * Girdi olarak JSON formatında sensör verilerini al, çıktı olarak `{"prediction": 1, "probability": 0.85}` dön.
+* **Frontend (Streamlit):**
+    * Kullanıcı dostu bir panel tasarla.
+    * **Özellik:** "Simülasyon Modu". Kullanıcı bir butona bastığında test setinden rastgele bir parça seçilsin, sensör değerleri ekranda gösterilsin ve modelin kararı (Geçti/Kaldı) anlık olarak yansıtılsın.
+    * **Görsellik:** Hatalı tahminlerde kırmızı, sağlam tahminlerde yeşil uyarı kutuları (st.error, st.success) kullan.
 
 -----
 
@@ -221,41 +227,11 @@ Sadece Streamlit ile lokalde çalışmak yeterli olsa da, projeyi "Production Re
 
 ---
 
+## **10. README.MD DOSYASINI DÜZENLE**
+
+  * **Readme.md:** Elimizdeki tüm bilgileri analiz et ve bu dosyayı güncelle.
+  * **Diğer:** Proje dosyalarının (bosch-quality-ml-pipeline altındaki) hepsini kontrol et.
+
+---
 
 **NOT:** Bu proje "Zero2End Machine Learning Bootcamp" final projesi isterlerine (Tabular data, Kaggle source, Pipeline structure, Deployment) %100 uyumludur.
-
-
-
-
-
-
-
-
-
-
-
-
-
----
-
-
-
-### **GÜNCELLENMİŞ "ADIM 6" TALİMATI**
-
-Mevcut **ADIM 6**'yı şu şekilde daha kapsamlı hale getirebilirsin:
-
-### **ADIM 6: Deployment ve Arayüz - `app/ui.py` & `app/main.py`**
-
-* **Amaç:** Modeli hem son kullanıcı (Operatör) hem de sistemler (Robotlar) için erişilebilir kılmak.
-* **Backend (FastAPI):**
-    * `app/main.py` içinde `/predict` endpoint'i oluştur.
-    * Girdi olarak JSON formatında sensör verilerini al, çıktı olarak `{"prediction": 1, "probability": 0.85}` dön.
-* **Frontend (Streamlit):**
-    * Kullanıcı dostu bir panel tasarla.
-    * **Özellik:** "Simülasyon Modu". Kullanıcı bir butona bastığında test setinden rastgele bir parça seçilsin, sensör değerleri ekranda gösterilsin ve modelin kararı (Geçti/Kaldı) anlık olarak yansıtılsın.
-    * **Görsellik:** Hatalı tahminlerde kırmızı, sağlam tahminlerde yeşil uyarı kutuları (st.error, st.success) kullan.
-
----
-
-**Nasıl Kullanırsın?**
-Bu çıktıları kopyalayıp `project.md` dosyasının sonuna yapıştırırsan, bir AI Agent'a "Bana raporlama kısmını yap" veya "Sunum için feature importance grafiği çiz" dediğinde, Agent ne yapması gerektiğini çok daha net anlayacaktır.
