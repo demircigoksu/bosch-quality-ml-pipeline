@@ -7,7 +7,8 @@ WORKDIR /app
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    PORT=10000
 
 # Copy requirements first for better caching
 COPY requirements.txt .
@@ -23,9 +24,8 @@ COPY . .
 RUN mkdir -p data models
 
 # Expose ports
-# 8000 for FastAPI
-# 8501 for Streamlit
-EXPOSE 8000 8501
+# Render.com uses PORT environment variable
+EXPOSE ${PORT}
 
-# Default command (can be overridden in docker-compose)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Streamlit command for Render (single port)
+CMD streamlit run app/ui.py --server.port=${PORT} --server.address=0.0.0.0 --server.headless=true

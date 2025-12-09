@@ -36,10 +36,10 @@ data/*.zip
 data/*.parquet
 !data/.gitkeep
 
-# Model files
-models/*.pkl
-models/*.joblib
-models/*.h5
+# Model files (deployment için dahil edilecek)
+# models/*.pkl
+# models/*.joblib
+# models/*.h5
 !models/.gitkeep
 
 # IDE
