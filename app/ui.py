@@ -291,54 +291,93 @@ def show_manual_prediction(model, feature_columns, threshold):
     """Manuel veri girişi."""
     st.header("✏️ Manuel Veri Girişi")
     
-    st.warning("⚠️ Bu model 358 özellik kullanmaktadır. Manuel giriş zor olacağından, Rastgele Örnek veya CSV Yükleme önerilir.")
+    st.info("""
+    ℹ️ **Bu bölüm demo amaçlıdır.** Model 358 özellik kullanmaktadır.
+    Gerçek kullanım için **CSV Yükleme** veya **Rastgele Örnek** önerilir.
+    """)
     
     # Feature açıklamaları
-    with st.expander("ℹ️ Özellik Açıklamaları", expanded=False):
+    with st.expander("📖 Özellik Açıklamaları", expanded=True):
         st.markdown("""
-        **Satır Bazlı İstatistikler** (her parçanın sensör ölçümlerinden hesaplanır):
+        Bu değerler her parçanın **sensör ölçümlerinden** hesaplanır:
         
-        | Özellik | Açıklama |
-        |---------|----------|
-        | `row_mean` | Tüm sensör değerlerinin ortalaması |
-        | `row_std` | Sensör değerlerinin standart sapması (değişkenlik) |
-        | `row_min` | En düşük sensör değeri |
-        | `row_max` | En yüksek sensör değeri |
-        | `row_nonzero` | Sıfır olmayan sensör sayısı |
-        | `missing_ratio` | Eksik veri oranı (0-1 arası) |
+        | Özellik | Açıklama | Tipik Aralık |
+        |---------|----------|--------------|
+        | **row_mean** | Sensör değerlerinin ortalaması | 0.1 - 0.5 |
+        | **row_std** | Değerlerin dağınıklığı (standart sapma) | 0.05 - 0.3 |
+        | **row_min** | En düşük sensör ölçümü | 0.0 - 0.2 |
+        | **row_max** | En yüksek sensör ölçümü | 0.3 - 1.0 |
+        | **row_nonzero** | Sıfır olmayan sensör sayısı | 50 - 150 |
         
-        💡 **İpucu:** Normal parçalarda `row_mean` genellikle 0.1-0.5 arasında, `row_std` düşük olur.
+        🔍 **İpucu:** Hatalı parçalarda genellikle `row_std` yüksek, `row_mean` anormal olur.
         """)
     
-    st.markdown("Demo için birkaç temel değer girebilirsiniz:")
+    st.markdown("### Değerleri Girin")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        row_mean = st.number_input("row_mean (sensör ortalaması)", value=0.15, format="%.4f", 
-                                   help="Tüm sensör değerlerinin ortalaması")
-        row_std = st.number_input("row_std (standart sapma)", value=0.1, format="%.4f",
-                                  help="Değerlerin ne kadar dağınık olduğu")
-        missing_ratio = st.number_input("missing_ratio (eksik veri oranı)", value=0.8, format="%.4f",
-                                        help="0=hiç eksik yok, 1=tamamen eksik")
+        row_mean = st.number_input(
+            "row_mean", 
+            value=0.15, 
+            min_value=0.0,
+            max_value=1.0,
+            step=0.01,
+            format="%.4f", 
+            help="Tüm sensör değerlerinin ortalaması (0-1 arası)"
+        )
+        row_std = st.number_input(
+            "row_std", 
+            value=0.08, 
+            min_value=0.0,
+            max_value=1.0,
+            step=0.01,
+            format="%.4f",
+            help="Değerlerin standart sapması - yüksekse değişkenlik fazla"
+        )
+        row_min = st.number_input(
+            "row_min", 
+            value=0.0, 
+            min_value=0.0,
+            max_value=1.0,
+            step=0.01,
+            format="%.4f",
+            help="En düşük sensör ölçümü"
+        )
     
     with col2:
-        row_min = st.number_input("row_min (minimum değer)", value=0.0, format="%.4f",
-                                  help="En düşük sensör ölçümü")
-        row_max = st.number_input("row_max (maksimum değer)", value=0.5, format="%.4f",
-                                  help="En yüksek sensör ölçümü")
-        row_nonzero = st.number_input("row_nonzero (sıfır olmayan sayısı)", value=100, format="%d",
-                                      help="Kaç sensör sıfırdan farklı değer okudu")
+        row_max = st.number_input(
+            "row_max", 
+            value=0.45, 
+            min_value=0.0,
+            max_value=1.0,
+            step=0.01,
+            format="%.4f",
+            help="En yüksek sensör ölçümü"
+        )
+        row_nonzero = st.number_input(
+            "row_nonzero", 
+            value=100, 
+            min_value=0,
+            max_value=200,
+            step=5,
+            help="Kaç sensör sıfırdan farklı değer okudu"
+        )
     
-    if st.button("Tahmin Yap", type="primary"):
-        # Create feature vector with defaults
-        features = {col: -999 for col in feature_columns}
+    # Hesaplanan değer
+    row_range = row_max - row_min
+    st.caption(f"📊 Hesaplanan `row_range` = {row_range:.4f} (max - min)")
+    
+    st.divider()
+    
+    if st.button("🔮 Tahmin Yap", type="primary", use_container_width=True):
+        # Feature vector oluştur
+        features = {col: 0.0 for col in feature_columns}
         features['row_mean'] = row_mean
         features['row_std'] = row_std
         features['row_min'] = row_min
         features['row_max'] = row_max
-        features['row_range'] = row_max - row_min
-        features['missing_ratio'] = missing_ratio
+        features['row_range'] = row_range
         features['row_nonzero'] = row_nonzero
         
         X = pd.DataFrame([features])[feature_columns]
@@ -347,6 +386,7 @@ def show_manual_prediction(model, feature_columns, threshold):
         prediction = 1 if proba >= threshold else 0
         
         st.divider()
+        
         col_r1, col_r2 = st.columns(2)
         
         with col_r1:
@@ -354,9 +394,9 @@ def show_manual_prediction(model, feature_columns, threshold):
         
         with col_r2:
             if prediction == 1:
-                st.error("❌ Tahmin: **HATALI**")
+                st.error("❌ Tahmin: **HATALI PARÇA**")
             else:
-                st.success("✅ Tahmin: **SAĞLAM**")
+                st.success("✅ Tahmin: **SAĞLAM PARÇA**")
 
 
 def show_file_upload(model, feature_columns, threshold):
