@@ -7,14 +7,18 @@ on new data.
 
 import pandas as pd
 import numpy as np
-import pickle
+import joblib
 from pathlib import Path
 from typing import Union, List, Dict
 
-from config import MODEL_PATH
+# Model paths
+MODELS_DIR = Path(__file__).parent.parent / "models"
+MODEL_PATH = MODELS_DIR / "final_model.pkl"
+FEATURES_PATH = MODELS_DIR / "feature_names.pkl"
+CONFIG_PATH = MODELS_DIR / "model_config.pkl"
 
 
-def load_model(model_path=MODEL_PATH):
+def load_model(model_path=None):
     """
     Load a trained model from disk.
     
@@ -24,14 +28,47 @@ def load_model(model_path=MODEL_PATH):
     Returns:
         Loaded model object
     """
+    if model_path is None:
+        model_path = MODEL_PATH
+    
     if not Path(model_path).exists():
         raise FileNotFoundError(f"Model file not found: {model_path}")
     
-    with open(model_path, 'rb') as f:
-        model = pickle.load(f)
-    
+    model = joblib.load(model_path)
     print(f"Model loaded from {model_path}")
     return model
+
+
+def load_feature_names():
+    """Load feature names used in training."""
+    if FEATURES_PATH.exists():
+        return joblib.load(FEATURES_PATH)
+    return None
+
+
+def load_config():
+    """Load model configuration."""
+    if CONFIG_PATH.exists():
+        return joblib.load(CONFIG_PATH)
+    return {'threshold': 0.35}
+
+
+def apply_feature_engineering(df):
+    """Apply feature engineering to input data."""
+    X = df.copy()
+    
+    # Get original columns (excluding engineered ones)
+    original_cols = [c for c in df.columns if not c.startswith('row_')]
+    
+    # Row statistics
+    X['row_mean'] = df[original_cols].mean(axis=1)
+    X['row_std'] = df[original_cols].std(axis=1)
+    X['row_min'] = df[original_cols].min(axis=1)
+    X['row_max'] = df[original_cols].max(axis=1)
+    X['row_range'] = X['row_max'] - X['row_min']
+    X['row_nonzero'] = (df[original_cols] != 0).sum(axis=1)
+    
+    return X
 
 
 def preprocess_input(data: Union[pd.DataFrame, Dict, List[Dict]]) -> pd.DataFrame:
@@ -52,7 +89,15 @@ def preprocess_input(data: Union[pd.DataFrame, Dict, List[Dict]]) -> pd.DataFram
     else:
         df = data.copy()
     
-    # Fill missing values with 0 (or median from training)
+    # Remove Id and Response if present
+    for col in ['Id', 'Response']:
+        if col in df.columns:
+            df = df.drop(col, axis=1)
+    
+    # Apply feature engineering
+    df = apply_feature_engineering(df)
+    
+    # Fill missing values
     df = df.fillna(0)
     
     return df

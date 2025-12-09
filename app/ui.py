@@ -35,15 +35,26 @@ st.set_page_config(
 def load_trained_model():
     """Load the trained model and config (cached)."""
     try:
-        model = joblib.load(MODELS_DIR / "bosch_quality_classifier.pkl")
-        feature_columns = joblib.load(MODELS_DIR / "feature_columns.pkl")
+        # Try to load final model first
+        model_path = MODELS_DIR / "final_model.pkl"
+        if not model_path.exists():
+            model_path = MODELS_DIR / "bosch_quality_classifier.pkl"
+        
+        model = joblib.load(model_path)
+        
+        # Load feature names
+        feature_path = MODELS_DIR / "feature_names.pkl"
+        if feature_path.exists():
+            feature_columns = joblib.load(feature_path)
+        else:
+            feature_columns = joblib.load(MODELS_DIR / "feature_columns.pkl")
         
         # Load config if exists
         config_path = MODELS_DIR / "model_config.pkl"
         if config_path.exists():
             config = joblib.load(config_path)
         else:
-            config = {'best_threshold': 0.5}
+            config = {'threshold': 0.35}
         
         return model, feature_columns, config
     except Exception as e:
@@ -55,7 +66,13 @@ def load_trained_model():
 def load_sample_data():
     """Load sample data for random prediction."""
     try:
-        data_path = DATA_DIR / "train_numeric.csv"
+        # Try clean test data first
+        data_path = DATA_DIR / "test_numeric_clean_alt.csv"
+        if not data_path.exists():
+            data_path = DATA_DIR / "train_numeric_clean.csv"
+        if not data_path.exists():
+            data_path = DATA_DIR / "train_numeric.csv"
+        
         if data_path.exists():
             # Load only first 10000 rows for sampling
             df = pd.read_csv(data_path, nrows=10000)
@@ -89,35 +106,13 @@ def apply_feature_engineering(df, original_columns):
     """Apply feature engineering to input data."""
     X = df.copy()
     
-    # Row statistics
+    # Row statistics (matching train_production.py)
     X['row_mean'] = df[original_columns].mean(axis=1)
     X['row_std'] = df[original_columns].std(axis=1)
     X['row_min'] = df[original_columns].min(axis=1)
     X['row_max'] = df[original_columns].max(axis=1)
     X['row_range'] = X['row_max'] - X['row_min']
-    
-    # Missing patterns
-    X['missing_count'] = df[original_columns].isnull().sum(axis=1)
-    X['missing_ratio'] = X['missing_count'] / len(original_columns)
-    X['non_zero_count'] = (df[original_columns] != 0).sum(axis=1)
-    
-    # Station-based features
-    stations = {}
-    for col in original_columns:
-        parts = col.split('_')
-        if len(parts) >= 2:
-            station = parts[0]
-            if station not in stations:
-                stations[station] = []
-            stations[station].append(col)
-    
-    for station, cols in stations.items():
-        if len(cols) > 1:
-            station_data = df[cols]
-            X[f'{station}_mean'] = station_data.mean(axis=1)
-            X[f'{station}_std'] = station_data.std(axis=1)
-            X[f'{station}_missing'] = station_data.isnull().sum(axis=1)
-            X[f'{station}_nonzero'] = (station_data != 0).sum(axis=1)
+    X['row_nonzero'] = (df[original_columns] != 0).sum(axis=1)
     
     return X
 
@@ -148,7 +143,7 @@ def main():
         "Karar Eşiği (Threshold)",
         min_value=0.1,
         max_value=0.9,
-        value=float(config.get('best_threshold', 0.55)),
+        value=float(config.get('threshold', 0.35)),
         step=0.05,
         help="Yüksek threshold = daha az False Positive, düşük threshold = daha az False Negative"
     )

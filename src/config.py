@@ -15,7 +15,7 @@ MODELS_DIR = PROJECT_ROOT / "models"
 NOTEBOOKS_DIR = PROJECT_ROOT / "notebooks"
 DOCS_DIR = PROJECT_ROOT / "docs"
 
-# Data configuration - Bosch dataset files
+# Data configuration - Bosch dataset files (Original)
 TRAIN_NUMERIC_PATH = DATA_DIR / "train_numeric.csv"
 TEST_NUMERIC_PATH = DATA_DIR / "test_numeric.csv"
 TRAIN_CATEGORICAL_PATH = DATA_DIR / "train_categorical.csv"
@@ -23,13 +23,19 @@ TEST_CATEGORICAL_PATH = DATA_DIR / "test_categorical.csv"
 TRAIN_DATE_PATH = DATA_DIR / "train_date.csv"
 TEST_DATE_PATH = DATA_DIR / "test_date.csv"
 
+# Clean data paths (preprocessed, no missing values)
+TRAIN_CLEAN_PATH = DATA_DIR / "train_numeric_clean.csv"
+TEST_CLEAN_PATH = DATA_DIR / "test_numeric_clean_alt.csv"
+
 # Sampling configuration (for faster development)
 SAMPLE_SIZE = 100_000  # Number of rows to load for training
-USE_SAMPLING = True    # Set to False to use full dataset
+USE_SAMPLING = False   # Set to False - using clean data now
 
 # Model configuration
-MODEL_NAME = "bosch_quality_classifier"
+MODEL_NAME = "final_model"
 MODEL_PATH = MODELS_DIR / f"{MODEL_NAME}.pkl"
+FEATURES_PATH = MODELS_DIR / "feature_names.pkl"
+CONFIG_PATH = MODELS_DIR / "model_config.pkl"
 
 # Training parameters
 RANDOM_SEED = 42
