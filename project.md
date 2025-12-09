@@ -251,6 +251,11 @@ Projenin teknik kısımları tamamlanmıştır. Şimdi projenin vitrinini oluşt
     5.  **Teknik Detaylar:** Veri işleme (Sampling), Threshold optimizasyonu ve "False Negative" maliyet analizi.
     6.  **Deployment:** FastAPI ve Streamlit ile canlı simülasyon kurgusu, Docker kullanımı.
     7.  **Sonuç:** GitHub repo linki için bir yer tutucu (placeholder).
+    8.  **Dil**: Türkçe ve ingilizce iki ayrı dosya olacak. `medium_blog_post-tr.md` ve `medium_blog_post-en.md`.
+
+
+---
+
 
 ### **GÖREV B: Render.com Deployment Rehberi Oluştur**
 

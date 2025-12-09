@@ -256,11 +256,11 @@ The lesson: **Context matters more than absolute numbers.**
 
 The complete project is open source:
 
-🔗 **GitHub**: [YOUR_GITHUB_REPO_LINK_HERE]
+🔗 **GitHub**: [demircigoksu/bosch-quality-ml-pipeline](https://github.com/demircigoksu/bosch-quality-ml-pipeline)
 
 ```bash
 # Clone and run locally
-git clone [YOUR_REPO_URL]
+git clone https://github.com/demircigoksu/bosch-quality-ml-pipeline.git
 cd bosch-quality-ml-pipeline
 docker-compose up -d
 
@@ -287,8 +287,8 @@ Manufacturing AI isn't about replacing humans — it's about giving them superpo
 *This project was built as part of the Zero2End Machine Learning Bootcamp. Thanks to Bosch for making this dataset publicly available for research and learning.*
 
 **Connect with me:**
-- GitHub: [YOUR_GITHUB_PROFILE]
-- LinkedIn: [YOUR_LINKEDIN_PROFILE]
+- GitHub: [demircigoksu](https://github.com/demircigoksu)
+- LinkedIn: [Göksu Demirci](https://linkedin.com/in/demircigoksu)
 
 ---
 
