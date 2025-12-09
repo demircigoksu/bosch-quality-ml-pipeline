@@ -1,8 +1,5 @@
 """
-Training module for Bosch Quality Classification.
-
-This module handles data loading, preprocessing, model training,
-and model persistence.
+Model eğitim modülü.
 """
 
 import pandas as pd
@@ -26,163 +23,101 @@ from config import (
 
 
 def load_data(data_path=TRAIN_DATA_PATH):
-    """
-    Load training data from CSV file.
-    
-    Args:
-        data_path: Path to the training data CSV file
-        
-    Returns:
-        pandas.DataFrame: Loaded training data
-    """
-    print(f"Loading data from {data_path}...")
+    """Eğitim verisini yükle."""
+    print(f"Veri yükleniyor: {data_path}")
     df = pd.read_csv(data_path)
-    print(f"Data loaded: {df.shape[0]} rows, {df.shape[1]} columns")
+    print(f"Yüklendi: {df.shape[0]} satır, {df.shape[1]} sütun")
     return df
 
 
 def preprocess_data(df, target_col='Response'):
-    """
-    Preprocess the data by handling missing values and feature selection.
+    """Veriyi ön işle."""
+    print("Veri işleniyor...")
     
-    Args:
-        df: Input dataframe
-        target_col: Name of the target column
-        
-    Returns:
-        X: Feature matrix
-        y: Target vector
-    """
-    print("Preprocessing data...")
-    
-    # Separate features and target
     y = df[target_col]
     X = df.drop(columns=[target_col])
     
-    # Remove features with too many missing values
+    # çok eksik veri olan sütunları çıkar
     missing_pct = X.isnull().sum() / len(X)
     cols_to_keep = missing_pct[missing_pct < MAX_MISSING_THRESHOLD].index
     X = X[cols_to_keep]
-    print(f"Features after removing high-missing columns: {X.shape[1]}")
+    print(f"Kalan sütun sayısı: {X.shape[1]}")
     
-    # Fill remaining missing values with median
+    # kalan eksikleri medyan ile doldur
     X = X.fillna(X.median())
     
-    print(f"Final feature shape: {X.shape}")
-    print(f"Target distribution:\n{y.value_counts()}")
+    print(f"Son feature boyutu: {X.shape}")
+    print(f"Hedef dağılımı:\n{y.value_counts()}")
     
     return X, y
 
 
 def train_model(X_train, y_train, model_type='xgboost'):
-    """
-    Train a classification model.
-    
-    Args:
-        X_train: Training features
-        y_train: Training target
-        model_type: Type of model to train ('xgboost' or 'random_forest')
-        
-    Returns:
-        Trained model
-    """
-    print(f"Training {model_type} model...")
+    """Model eğit."""
+    print(f"{model_type} eğitiliyor...")
     
     if model_type == 'xgboost':
         model = xgb.XGBClassifier(**XGBOOST_PARAMS)
     elif model_type == 'random_forest':
         model = RandomForestClassifier(**RANDOM_FOREST_PARAMS)
     else:
-        raise ValueError(f"Unknown model type: {model_type}")
+        raise ValueError(f"Bilinmeyen model: {model_type}")
     
     model.fit(X_train, y_train)
-    print("Model training completed.")
+    print("Eğitim tamamlandı.")
     
     return model
 
 
 def evaluate_model(model, X_test, y_test):
-    """
-    Evaluate model performance on test data.
-    
-    Args:
-        model: Trained model
-        X_test: Test features
-        y_test: Test target
-        
-    Returns:
-        dict: Dictionary of evaluation metrics
-    """
-    print("Evaluating model...")
+    """Model performansını değerlendir."""
+    print("Değerlendirme...")
     
     y_pred = model.predict(X_test)
     y_pred_proba = model.predict_proba(X_test)[:, 1]
     
-    # Calculate metrics
     roc_auc = roc_auc_score(y_test, y_pred_proba)
     mcc = matthews_corrcoef(y_test, y_pred)
     
-    print(f"\nROC-AUC Score: {roc_auc:.4f}")
-    print(f"Matthews Correlation Coefficient: {mcc:.4f}")
-    print("\nClassification Report:")
+    print(f"\nROC-AUC: {roc_auc:.4f}")
+    print(f"MCC: {mcc:.4f}")
+    print("\nSınıflandırma Raporu:")
     print(classification_report(y_test, y_pred))
     
-    metrics = {
-        'roc_auc': roc_auc,
-        'mcc': mcc
-    }
-    
-    return metrics
+    return {'roc_auc': roc_auc, 'mcc': mcc}
 
 
 def save_model(model, model_path=MODEL_PATH):
-    """
-    Save trained model to disk.
-    
-    Args:
-        model: Trained model
-        model_path: Path to save the model
-    """
+    """Modeli diske kaydet."""
     model_path.parent.mkdir(parents=True, exist_ok=True)
     
     with open(model_path, 'wb') as f:
         pickle.dump(model, f)
     
-    print(f"Model saved to {model_path}")
+    print(f"Model kaydedildi: {model_path}")
 
 
 def main():
-    """
-    Main training pipeline.
-    """
+    """Ana eğitim akışı."""
     print("=" * 50)
-    print("Bosch Quality Classification - Training Pipeline")
+    print("Bosch Kalite Sınıflandırma - Eğitim")
     print("=" * 50)
     
-    # Load data
     df = load_data()
-    
-    # Preprocess data
     X, y = preprocess_data(df)
     
-    # Split data
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=TEST_SIZE, random_state=RANDOM_SEED, stratify=y
     )
-    print(f"\nTrain set: {X_train.shape[0]} samples")
-    print(f"Test set: {X_test.shape[0]} samples")
+    print(f"\nTrain: {X_train.shape[0]} örnek")
+    print(f"Test: {X_test.shape[0]} örnek")
     
-    # Train model
     model = train_model(X_train, y_train, model_type='xgboost')
-    
-    # Evaluate model
-    metrics = evaluate_model(model, X_test, y_test)
-    
-    # Save model
+    evaluate_model(model, X_test, y_test)
     save_model(model)
     
     print("\n" + "=" * 50)
-    print("Training pipeline completed successfully!")
+    print("Tamamlandı!")
     print("=" * 50)
 
 

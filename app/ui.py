@@ -1,8 +1,5 @@
 """
-Streamlit UI for Bosch Quality Prediction.
-
-This module provides an interactive web interface for making
-manufacturing failure predictions.
+Bosch Kalite Tahmin Arayüzü (Streamlit).
 """
 
 import streamlit as st
@@ -13,7 +10,6 @@ import joblib
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-# Add src directory to path
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 from config import MODEL_PATH
@@ -33,9 +29,8 @@ st.set_page_config(
 
 @st.cache_resource
 def load_trained_model():
-    """Load the trained model and config (cached)."""
+    """Eğitilmiş modeli yükle."""
     try:
-        # Try to load final model first
         model_path = MODELS_DIR / "final_model.pkl"
         if not model_path.exists():
             model_path = MODELS_DIR / "bosch_quality_classifier.pkl"
@@ -64,80 +59,62 @@ def load_trained_model():
 
 @st.cache_data
 def load_sample_data():
-    """Load sample data for random prediction or generate realistic simulation."""
+    """Örnek veri yükle."""
     try:
-        # Try to load real data files
         for data_file in ["test_numeric_clean_alt.csv", "train_numeric_clean.csv", 
                           "demo_test.csv", "demo_train.csv", "train_numeric.csv"]:
             data_path = DATA_DIR / data_file
             if data_path.exists():
                 df = pd.read_csv(data_path, nrows=10000)
-                return df, False  # Real data loaded
+                return df, False
         
-        # No real data - will use simulation
         return None, True
     except Exception as e:
         return None, True
 
 
 def generate_realistic_sample(feature_columns, force_failure=False):
-    """
-    Generate realistic sample data that mimics actual Bosch production data.
-    This creates believable sensor readings that produce realistic predictions.
-    """
+    """Gerçekçi örnek veri üret."""
     np.random.seed(None)
     
     sample = {}
     
-    # Bosch data characteristics (learned from real data analysis):
-    # - Most values are between -1 and 1 (normalized)
-    # - High correlation between features in same station
-    # - Failure samples tend to have more extreme values
+    # riskli görünsün mü?
+    is_risky = force_failure or (np.random.random() < 0.15)
     
-    # Determine if this sample should appear "risky"
-    is_risky = force_failure or (np.random.random() < 0.15)  # ~15% failure rate for demo
-    
-    # Generate station-based correlated values
+    # istasyon bazlı korelasyonlu değerler üret
     station_base = {}
     for col in feature_columns:
         if col.startswith('L') and '_S' in col and '_F' in col:
             parts = col.split('_')
             station = f"{parts[0]}_{parts[1]}"
             
-            # Create base value for station if not exists
             if station not in station_base:
                 if is_risky:
-                    # Risky samples: more extreme base values
                     station_base[station] = np.random.uniform(-0.8, 0.8)
                 else:
-                    # Normal samples: centered values
                     station_base[station] = np.random.uniform(-0.3, 0.3)
             
-            # Add noise to station base
             noise = np.random.normal(0, 0.15)
             value = station_base[station] + noise
             
-            # Occasionally add extreme values for risky samples
             if is_risky and np.random.random() < 0.1:
                 value = np.random.choice([-1, 1]) * np.random.uniform(0.7, 1.0)
             
             sample[col] = np.clip(value, -1, 1)
         
         elif col.startswith('row_'):
-            # Skip engineered features - will be computed later
             continue
         else:
-            # Other features
             sample[col] = np.random.uniform(-0.5, 0.5)
     
     return pd.DataFrame([sample]), is_risky
 
 
 def apply_feature_engineering(df, original_columns):
-    """Apply feature engineering to input data."""
+    """Feature engineering uygula."""
     X = df.copy()
     
-    # Row statistics (matching train_production.py)
     X['row_mean'] = df[original_columns].mean(axis=1)
     X['row_std'] = df[original_columns].std(axis=1)
     X['row_min'] = df[original_columns].min(axis=1)
@@ -149,9 +126,8 @@ def apply_feature_engineering(df, original_columns):
 
 
 def main():
-    """Main Streamlit application."""
+    """Ana uygulama."""
     
-    # Title and description
     st.title("🏭 Bosch Quality Prediction System")
     st.markdown("""
     Üretim hattındaki parçaların **kalite kontrol** tahminini yapan sistem.
@@ -202,10 +178,9 @@ def main():
 
 
 def show_random_sample_prediction(model, feature_columns, threshold):
-    """Show random sample prediction - seamless real/simulated data."""
+    """Rastgele örnek ile tahmin."""
     st.header("🎲 Rastgele Örnek ile Tahmin")
     
-    # Load sample data (returns tuple now)
     result = load_sample_data()
     sample_df, is_simulation = result if result else (None, True)
     
@@ -224,8 +199,8 @@ def show_random_sample_prediction(model, feature_columns, threshold):
             if not is_simulation and sample_df is not None:
                 st.session_state['sample_idx'] = np.random.randint(0, len(sample_df))
             else:
-                st.session_state['sample_idx'] = np.random.randint(10000, 99999)  # Realistic looking ID
-            st.session_state['sample_df'] = sample_df  # Store for later use
+                st.session_state['sample_idx'] = np.random.randint(10000, 99999)
+            st.session_state['sample_df'] = sample_df
     
     if 'random_sample' in st.session_state and st.session_state['random_sample']:
         is_sim = st.session_state.get('is_simulation', True)
@@ -233,12 +208,10 @@ def show_random_sample_prediction(model, feature_columns, threshold):
         stored_df = st.session_state.get('sample_df', None)
         
         if is_sim:
-            # Generate realistic simulated data
             sample, is_risky = generate_realistic_sample(feature_columns)
-            actual_label = 1 if is_risky and np.random.random() < 0.7 else 0  # Simulated ground truth
+            actual_label = 1 if is_risky and np.random.random() < 0.7 else 0
             original_cols = [c for c in feature_columns if not c.startswith('row_')]
         else:
-            # Use real data
             sample = stored_df.iloc[[idx]].copy()
             actual_label = None
             if 'Response' in sample.columns:
@@ -246,19 +219,15 @@ def show_random_sample_prediction(model, feature_columns, threshold):
                 sample = sample.drop(['Id', 'Response'], axis=1, errors='ignore')
             original_cols = [c for c in sample.columns if c not in ['Id', 'Response']]
         
-        # Apply feature engineering
         X_eng = apply_feature_engineering(sample, original_cols)
         
-        # Select only model features
         available_features = [f for f in feature_columns if f in X_eng.columns]
         X_final = X_eng[available_features].fillna(0)
         X_final = X_final.replace([np.inf, -np.inf], 0)
         
-        # Make prediction
         proba = model.predict_proba(X_final)[0, 1]
         prediction = 1 if proba >= threshold else 0
         
-        # Display results
         st.divider()
         
         with col2:
@@ -278,7 +247,6 @@ def show_random_sample_prediction(model, feature_columns, threshold):
             else:
                 st.success("✅ Tahmin: **SAĞLAM**")
         
-        # Show actual vs predicted (works for both real and simulated)
         if actual_label is not None:
             st.divider()
             col_a, col_b, col_c = st.columns(3)
@@ -297,7 +265,6 @@ def show_random_sample_prediction(model, feature_columns, threshold):
                 else:
                     st.warning("⚠️ **Yanlış Tahmin**")
         
-        # Visualization
         fig, ax = plt.subplots(figsize=(8, 2))
         color = 'red' if prediction == 1 else 'green'
         ax.barh(['Hata Riski'], [proba], color=color, alpha=0.7)
@@ -307,15 +274,11 @@ def show_random_sample_prediction(model, feature_columns, threshold):
         ax.legend()
         st.pyplot(fig)
         plt.close()
-        
-        # Show some feature values
         with st.expander("📋 Örnek Veri Detayları (Sensör Okumaları)"):
-            # Show first 20 non-null features
             display_cols = [c for c in sample.columns if not c.startswith('row_')][:20]
             if display_cols:
                 st.dataframe(sample[display_cols].T.rename(columns={sample.index[0]: 'Değer'}))
             
-            # Show statistics
             st.markdown(f"""
             **Veri İstatistikleri:**
             - Toplam sensör sayısı: {len(original_cols)}
@@ -325,12 +288,11 @@ def show_random_sample_prediction(model, feature_columns, threshold):
 
 
 def show_manual_prediction(model, feature_columns, threshold):
-    """Show manual prediction interface."""
+    """Manuel veri girişi."""
     st.header("✏️ Manuel Veri Girişi")
     
     st.warning("⚠️ Bu model 358 özellik kullanmaktadır. Manuel giriş zor olacağından, Rastgele Örnek veya CSV Yükleme önerilir.")
     
-    # Simple demo with a few features
     st.markdown("Demo için birkaç temel değer girebilirsiniz:")
     
     col1, col2 = st.columns(2)
@@ -375,7 +337,7 @@ def show_manual_prediction(model, feature_columns, threshold):
 
 
 def show_file_upload(model, feature_columns, threshold):
-    """Show file upload interface."""
+    """Dosya yükleme arayüzü."""
     st.header("📤 CSV Dosyası Yükle")
     
     st.markdown("Bosch veri formatında CSV dosyası yükleyin:")

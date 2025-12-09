@@ -1,6 +1,5 @@
 """
-Baseline Model Training Script
-Temiz veri ile XGBoost modeli eğitir ve kaydeder.
+Baseline Model Eğitim Scripti.
 """
 import pandas as pd
 import numpy as np

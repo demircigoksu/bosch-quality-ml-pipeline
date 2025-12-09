@@ -1,6 +1,5 @@
 """
-Final Model Training Script with Feature Engineering
-Daha iyi sonuçlar için optimizasyon yapılmış XGBoost modeli
+Final Model Eğitim Scripti (Feature Engineering dahil).
 """
 import pandas as pd
 import numpy as np
@@ -16,7 +15,7 @@ import joblib
 import os
 
 print("=" * 60)
-print("FINAL MODEL EĞİTİMİ (Feature Engineering)")
+print("FINAL MODEL EĞİTİMİ")
 print("=" * 60)
 
 # 1. Veri Yükleme
@@ -32,7 +31,6 @@ y = df['Response']
 # 3. Feature Engineering
 print(f"\n2. Feature Engineering...")
 
-# 3.1 Satır bazlı istatistikler
 print("   - Satır bazlı istatistikler ekleniyor...")
 X['row_mean'] = X.mean(axis=1)
 X['row_std'] = X.std(axis=1)
@@ -40,7 +38,6 @@ X['row_min'] = X.min(axis=1)
 X['row_max'] = X.max(axis=1)
 X['row_range'] = X['row_max'] - X['row_min']
 
-# 3.2 Her istasyon için ortalama (L0_S0, L0_S1, vb.)
 print("   - İstasyon bazlı özellikler ekleniyor...")
 stations = set()
 for col in X.columns:
@@ -49,7 +46,7 @@ for col in X.columns:
         if len(parts) >= 2:
             stations.add(f"{parts[0]}_{parts[1]}")
 
-for station in list(stations)[:10]:  # İlk 10 istasyon
+for station in list(stations)[:10]:
     station_cols = [c for c in X.columns if c.startswith(station + '_')]
     if station_cols:
         X[f'{station}_mean'] = X[station_cols].mean(axis=1)
@@ -68,20 +65,20 @@ print(f"\n3. Train/Test Split:")
 print(f"   Train: {X_train.shape[0]:,} satır ({y_train.sum():,} hatalı)")
 print(f"   Test:  {X_test.shape[0]:,} satır ({y_test.sum():,} hatalı)")
 
-# 5. Model Eğitimi - Optimized Parameters
+# 5. Model Eğitimi
 scale_pos_weight = (y_train == 0).sum() / (y_train == 1).sum()
-print(f"\n4. Optimized Model Eğitimi:")
+print(f"\n4. Model Eğitimi:")
 print(f"   scale_pos_weight: {scale_pos_weight:.1f}")
 
 model = XGBClassifier(
-    n_estimators=200,           # Daha fazla ağaç
-    max_depth=8,                # Biraz daha derin
-    learning_rate=0.05,         # Daha yavaş öğrenme
+    n_estimators=200,
+    max_depth=8,
+    learning_rate=0.05,
     scale_pos_weight=scale_pos_weight,
-    min_child_weight=5,         # Overfitting önleme
-    subsample=0.8,              # Her ağaç için örnekleme
-    colsample_bytree=0.8,       # Her ağaç için feature örnekleme
-    gamma=0.1,                  # Regularization
+    min_child_weight=5,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    gamma=0.1,
     eval_metric='auc',
     random_state=42,
     n_jobs=-1,
@@ -96,7 +93,6 @@ print("   ✅ Eğitim tamamlandı!")
 print(f"\n5. Threshold Optimizasyonu:")
 y_pred_proba = model.predict_proba(X_test)[:, 1]
 
-# Precision-Recall curve'dan optimal threshold bul
 precision_arr, recall_arr, thresholds = precision_recall_curve(y_test, y_pred_proba)
 f1_scores = 2 * (precision_arr * recall_arr) / (precision_arr + recall_arr + 1e-10)
 optimal_idx = np.argmax(f1_scores[:-1])

@@ -1,6 +1,5 @@
 """
-Production-Ready Model Training Script
-Recall odaklı model - hataları kaçırmamak öncelikli
+Production Model Eğitim Scripti (Recall odaklı).
 """
 import pandas as pd
 import numpy as np
@@ -15,7 +14,7 @@ import joblib
 import os
 
 print("=" * 60)
-print("PRODUCTION MODEL EĞİTİMİ (Recall Odaklı)")
+print("PRODUCTION MODEL EĞİTİMİ")
 print("=" * 60)
 
 # 1. Veri Yükleme

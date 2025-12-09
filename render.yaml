@@ -1,12 +1,6 @@
-# ============================================
-# RENDER.COM DEPLOYMENT YAPıLANDIRMASI
-# ============================================
-# Bu dosya Render.com'un Blueprint özelliği için
-# Otomatik deployment yapılandırması sağlar
-# ============================================
+# Render.com deployment yapılandırması
 
 services:
-  # Streamlit Web Uygulaması (Ana Servis)
   - type: web
     name: bosch-quality-ml
     runtime: docker

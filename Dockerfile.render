@@ -1,48 +1,31 @@
-# ============================================
-# RENDER.COM DEPLOYMENT DOCKERFILE
-# ============================================
-# Bu Dockerfile, Render.com üzerinde hem FastAPI
-# hem de Streamlit servislerini çalıştırmak için
-# optimize edilmiştir.
-# ============================================
+# Render.com Deployment Dockerfile
 
 FROM python:3.9-slim
 
-# Çalışma dizini
 WORKDIR /app
 
-# Ortam değişkenleri
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PORT=10000
 
-# Sistem bağımlılıkları (minimal)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Python bağımlılıkları
 COPY requirements.txt .
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Proje dosyaları
 COPY . .
 
-# Gerekli dizinleri oluştur
 RUN mkdir -p data models
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:${PORT}/health || exit 1
 
-# Render.com PORT ortam değişkenini kullanır
-# Sadece Streamlit çalıştırılacak (UI + dahili API çağrıları)
 EXPOSE ${PORT}
 
-# Streamlit için başlatma komutu
-# Render ücretsiz plan tek port destekler, bu yüzden Streamlit tercih ediyoruz
 CMD streamlit run app/ui.py \
     --server.port=${PORT} \
     --server.address=0.0.0.0 \

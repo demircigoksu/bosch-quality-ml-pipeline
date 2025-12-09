@@ -1,5 +1,5 @@
 """
-Train verisinden de aynı temiz sütunları çıkarır.
+Train verisinden temiz veri çıkarma scripti.
 """
 import pandas as pd
 import os

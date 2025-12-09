@@ -9,7 +9,7 @@ venv/
 ENV/
 .venv
 
-# Jupyter Notebook
+# Jupyter
 .ipynb_checkpoints
 *.ipynb_checkpoints
 
@@ -28,23 +28,18 @@ Thumbs.db
 .git/
 .gitignore
 
-# Data files (large datasets)
+# Veri dosyaları
 *.csv
 *.parquet
 *.feather
 data/*.csv
 data/*.parquet
 
-# Model files (if large)
-# Uncomment if models are too large
-# models/*.pkl
-# models/*.joblib
-
-# Logs
+# Log
 *.log
 logs/
 
-# Testing
+# Test
 .pytest_cache/
 .coverage
 htmlcov/
@@ -52,9 +47,9 @@ htmlcov/
 # Docker
 .dockerignore
 
-# Documentation
+# Dokümantasyon
 docs/_build/
 
-# Temporary files
+# Geçici
 *.tmp
 *.bak

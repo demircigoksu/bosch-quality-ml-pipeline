@@ -1,8 +1,5 @@
 """
-Inference module for Bosch Quality Classification.
-
-This module handles loading trained models and making predictions
-on new data.
+Tahmin (inference) modülü.
 """
 
 import pandas as pd
@@ -11,7 +8,7 @@ import joblib
 from pathlib import Path
 from typing import Union, List, Dict
 
-# Model paths
+# Model dosya yolları
 MODELS_DIR = Path(__file__).parent.parent / "models"
 MODEL_PATH = MODELS_DIR / "final_model.pkl"
 FEATURES_PATH = MODELS_DIR / "feature_names.pkl"
@@ -19,48 +16,39 @@ CONFIG_PATH = MODELS_DIR / "model_config.pkl"
 
 
 def load_model(model_path=None):
-    """
-    Load a trained model from disk.
-    
-    Args:
-        model_path: Path to the saved model file
-        
-    Returns:
-        Loaded model object
-    """
+    """Eğitilmiş modeli yükle."""
     if model_path is None:
         model_path = MODEL_PATH
     
     if not Path(model_path).exists():
-        raise FileNotFoundError(f"Model file not found: {model_path}")
+        raise FileNotFoundError(f"Model bulunamadı: {model_path}")
     
     model = joblib.load(model_path)
-    print(f"Model loaded from {model_path}")
+    print(f"Model yüklendi: {model_path}")
     return model
 
 
 def load_feature_names():
-    """Load feature names used in training."""
+    """Feature isimlerini yükle."""
     if FEATURES_PATH.exists():
         return joblib.load(FEATURES_PATH)
     return None
 
 
 def load_config():
-    """Load model configuration."""
+    """Model ayarlarını yükle."""
     if CONFIG_PATH.exists():
         return joblib.load(CONFIG_PATH)
     return {'threshold': 0.35}
 
 
 def apply_feature_engineering(df):
-    """Apply feature engineering to input data."""
+    """Veri üzerinde feature engineering uygula."""
     X = df.copy()
     
-    # Get original columns (excluding engineered ones)
     original_cols = [c for c in df.columns if not c.startswith('row_')]
     
-    # Row statistics
+    # satır bazlı istatistikler
     X['row_mean'] = df[original_cols].mean(axis=1)
     X['row_std'] = df[original_cols].std(axis=1)
     X['row_min'] = df[original_cols].min(axis=1)
@@ -72,16 +60,7 @@ def apply_feature_engineering(df):
 
 
 def preprocess_input(data: Union[pd.DataFrame, Dict, List[Dict]]) -> pd.DataFrame:
-    """
-    Preprocess input data for prediction.
-    
-    Args:
-        data: Input data as DataFrame, dict, or list of dicts
-        
-    Returns:
-        Preprocessed DataFrame ready for prediction
-    """
-    # Convert to DataFrame if necessary
+    """Girdi verisini tahmin için hazırla."""
     if isinstance(data, dict):
         df = pd.DataFrame([data])
     elif isinstance(data, list):
@@ -89,106 +68,62 @@ def preprocess_input(data: Union[pd.DataFrame, Dict, List[Dict]]) -> pd.DataFram
     else:
         df = data.copy()
     
-    # Remove Id and Response if present
+    # Id ve Response varsa çıkar
     for col in ['Id', 'Response']:
         if col in df.columns:
             df = df.drop(col, axis=1)
     
-    # Apply feature engineering
     df = apply_feature_engineering(df)
-    
-    # Fill missing values
     df = df.fillna(0)
     
     return df
 
 
 def predict(model, data: Union[pd.DataFrame, Dict, List[Dict]], return_proba: bool = False):
-    """
-    Make predictions on input data.
-    
-    Args:
-        model: Trained model
-        data: Input data for prediction
-        return_proba: If True, return prediction probabilities
-        
-    Returns:
-        Predictions (class labels or probabilities)
-    """
-    # Preprocess input
+    """Tahmin yap."""
     X = preprocess_input(data)
     
-    # Make predictions
     if return_proba:
-        predictions = model.predict_proba(X)
-        return predictions
+        return model.predict_proba(X)
     else:
-        predictions = model.predict(X)
-        return predictions
+        return model.predict(X)
 
 
 def predict_failure_probability(model, data: Union[pd.DataFrame, Dict, List[Dict]]) -> np.ndarray:
-    """
-    Predict the probability of manufacturing failure.
-    
-    Args:
-        model: Trained model
-        data: Input data for prediction
-        
-    Returns:
-        Array of failure probabilities
-    """
+    """Hata olasılığını hesapla."""
     probabilities = predict(model, data, return_proba=True)
-    # Return probability of positive class (failure)
-    failure_proba = probabilities[:, 1]
-    return failure_proba
+    return probabilities[:, 1]
 
 
 def batch_predict(model, data_path: Union[str, Path], output_path: Union[str, Path] = None):
-    """
-    Make predictions on a batch of data from a CSV file.
-    
-    Args:
-        model: Trained model
-        data_path: Path to input CSV file
-        output_path: Optional path to save predictions
-        
-    Returns:
-        DataFrame with predictions
-    """
-    print(f"Loading data from {data_path}...")
+    """CSV dosyasından toplu tahmin yap."""
+    print(f"Veri yükleniyor: {data_path}")
     df = pd.read_csv(data_path)
     
-    print(f"Making predictions on {len(df)} samples...")
+    print(f"{len(df)} örnek için tahmin yapılıyor...")
     predictions = predict(model, df)
     failure_probabilities = predict_failure_probability(model, df)
     
-    # Create results DataFrame
     results = pd.DataFrame({
         'prediction': predictions,
         'failure_probability': failure_probabilities
     })
     
-    # Save if output path is provided
     if output_path:
         results.to_csv(output_path, index=False)
-        print(f"Predictions saved to {output_path}")
+        print(f"Sonuçlar kaydedildi: {output_path}")
     
     return results
 
 
 def main():
-    """
-    Example usage of inference module.
-    """
+    """Örnek kullanım."""
     print("=" * 50)
-    print("Bosch Quality Classification - Inference")
+    print("Bosch Kalite - Tahmin Modülü")
     print("=" * 50)
     
-    # Load model
     model = load_model()
     
-    # Example: Single prediction
     example_data = {
         'feature_1': 0.5,
         'feature_2': 1.2,
@@ -198,10 +133,10 @@ def main():
     prediction = predict(model, example_data)
     probability = predict_failure_probability(model, example_data)
     
-    print(f"\nExample prediction:")
-    print(f"Input: {example_data}")
-    print(f"Prediction: {prediction[0]}")
-    print(f"Failure probability: {probability[0]:.4f}")
+    print(f"\nÖrnek tahmin:")
+    print(f"Girdi: {example_data}")
+    print(f"Tahmin: {prediction[0]}")
+    print(f"Hata olasılığı: {probability[0]:.4f}")
     
     print("\n" + "=" * 50)
 

@@ -1,5 +1,5 @@
 """
-Test numeric dosyasından hatasız ve eksiksiz verileri çıkaran script.
+Test verisinden temiz veri çıkarma scripti.
 """
 import pandas as pd
 import numpy as np
