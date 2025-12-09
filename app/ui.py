@@ -293,19 +293,42 @@ def show_manual_prediction(model, feature_columns, threshold):
     
     st.warning("⚠️ Bu model 358 özellik kullanmaktadır. Manuel giriş zor olacağından, Rastgele Örnek veya CSV Yükleme önerilir.")
     
+    # Feature açıklamaları
+    with st.expander("ℹ️ Özellik Açıklamaları", expanded=False):
+        st.markdown("""
+        **Satır Bazlı İstatistikler** (her parçanın sensör ölçümlerinden hesaplanır):
+        
+        | Özellik | Açıklama |
+        |---------|----------|
+        | `row_mean` | Tüm sensör değerlerinin ortalaması |
+        | `row_std` | Sensör değerlerinin standart sapması (değişkenlik) |
+        | `row_min` | En düşük sensör değeri |
+        | `row_max` | En yüksek sensör değeri |
+        | `row_nonzero` | Sıfır olmayan sensör sayısı |
+        | `missing_ratio` | Eksik veri oranı (0-1 arası) |
+        
+        💡 **İpucu:** Normal parçalarda `row_mean` genellikle 0.1-0.5 arasında, `row_std` düşük olur.
+        """)
+    
     st.markdown("Demo için birkaç temel değer girebilirsiniz:")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        row_mean = st.number_input("row_mean", value=0.0, format="%.4f")
-        row_std = st.number_input("row_std", value=0.0, format="%.4f")
-        missing_ratio = st.number_input("missing_ratio", value=0.8, format="%.4f")
+        row_mean = st.number_input("row_mean (sensör ortalaması)", value=0.15, format="%.4f", 
+                                   help="Tüm sensör değerlerinin ortalaması")
+        row_std = st.number_input("row_std (standart sapma)", value=0.1, format="%.4f",
+                                  help="Değerlerin ne kadar dağınık olduğu")
+        missing_ratio = st.number_input("missing_ratio (eksik veri oranı)", value=0.8, format="%.4f",
+                                        help="0=hiç eksik yok, 1=tamamen eksik")
     
     with col2:
-        row_min = st.number_input("row_min", value=0.0, format="%.4f")
-        row_max = st.number_input("row_max", value=0.0, format="%.4f")
-        non_zero_count = st.number_input("non_zero_count", value=100, format="%d")
+        row_min = st.number_input("row_min (minimum değer)", value=0.0, format="%.4f",
+                                  help="En düşük sensör ölçümü")
+        row_max = st.number_input("row_max (maksimum değer)", value=0.5, format="%.4f",
+                                  help="En yüksek sensör ölçümü")
+        row_nonzero = st.number_input("row_nonzero (sıfır olmayan sayısı)", value=100, format="%d",
+                                      help="Kaç sensör sıfırdan farklı değer okudu")
     
     if st.button("Tahmin Yap", type="primary"):
         # Create feature vector with defaults
@@ -316,7 +339,7 @@ def show_manual_prediction(model, feature_columns, threshold):
         features['row_max'] = row_max
         features['row_range'] = row_max - row_min
         features['missing_ratio'] = missing_ratio
-        features['non_zero_count'] = non_zero_count
+        features['row_nonzero'] = row_nonzero
         
         X = pd.DataFrame([features])[feature_columns]
         
