@@ -1,7 +1,0 @@
-# Hugging Face Xet storage for binary files
-*.csv filter=xet diff=xet merge=xet -text
-*.pkl filter=xet diff=xet merge=xet -text
-*.png filter=xet diff=xet merge=xet -text
-data/*.csv filter=xet diff=xet merge=xet -text
-models/*.pkl filter=xet diff=xet merge=xet -text
-docs/*.png filter=xet diff=xet merge=xet -text
