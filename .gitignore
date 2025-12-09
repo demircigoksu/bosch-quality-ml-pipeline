@@ -71,3 +71,8 @@ htmlcov/
 tmp/
 temp/
 *.tmp
+
+# Demo/Clean data files (for HuggingFace deployment)
+!data/train_numeric_clean.csv
+!data/test_numeric_clean_alt.csv
+!data/demo_*.csv
