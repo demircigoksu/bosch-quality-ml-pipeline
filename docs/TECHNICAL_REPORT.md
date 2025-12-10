@@ -210,18 +210,6 @@ Teknik Rapor
 
 ---
 
-## 9. Sonraki Adımlar
-
-Bu proje bir başlangıç noktası. İlerisi için düşünülebilecek geliştirmeler:
-
-1. IoT sensörlerinden anlık veri akışı entegrasyonu
-2. Farklı threshold stratejileri için A/B testleri
-3. Model performansı için izleme sistemi (MLOps)
-4. Daha iyi recall için ensemble modeller (LightGBM + XGBoost)
-5. Kategorik ve tarih verilerinin eklenmesi
-
----
-
 Rapor Sonu
 
 Zero2End Machine Learning Bootcamp - Final Projesi
