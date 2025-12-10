@@ -193,7 +193,6 @@ bosch-quality-ml-pipeline/
 │   ├── model_config.pkl              # Model konfigürasyonu
 │   └── final_report.pkl              # Sonuç raporu
 ├── 📂 docs/                          # Dokümantasyon
-│   ├── PRESENTATION.md               # Üst Yönetim Sunumu
 │   ├── TECHNICAL_REPORT.md           # Teknik Rapor
 │   ├── final_model_results.png       # Model sonuçları
 │   ├── feature_importance.png        # Feature importance
@@ -346,7 +345,6 @@ XGBClassifier(
 
 ## 📂 Dokümantasyon
 
-- [📊 Üst Yönetim Sunumu](docs/PRESENTATION.md)
 - [📋 Teknik Rapor](docs/TECHNICAL_REPORT.md)
 - [🔌 API Docs](http://localhost:8080/docs)
 
