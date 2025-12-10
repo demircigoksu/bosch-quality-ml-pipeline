@@ -329,43 +329,57 @@ def show_manual_prediction(model, feature_columns, threshold):
 
 
 def show_file_upload(model, feature_columns, threshold):
-    """CSV yukleme."""
+    """CSV yukleme - memory-efficient."""
     st.header("📤 CSV Yukle")
+    
+    st.info("💡 **Not:** Buyuk dosyalar icin ilk 10,000 satir islenir (bellek siniri).")
     
     uploaded = st.file_uploader("CSV dosyasi secin", type=['csv'])
     
     if uploaded:
         try:
-            df = pd.read_csv(uploaded)
-            st.success(f"✅ Yuklendi: {len(df)} satir, {len(df.columns)} sutun")
+            # Bellek tasarrufu icin satir limiti
+            MAX_ROWS = 10000
+            df = pd.read_csv(uploaded, nrows=MAX_ROWS)
+            
+            if len(df) == MAX_ROWS:
+                st.warning(f"⚠️ Dosya cok buyuk, ilk {MAX_ROWS} satir yuklendi.")
+            else:
+                st.success(f"✅ Yuklendi: {len(df)} satir, {len(df.columns)} sutun")
             
             if st.button("Toplu Tahmin Yap", type="primary"):
-                orig_cols = [c for c in df.columns if c not in ['Id', 'Response']]
-                X = add_features(df, orig_cols)
-                
-                for col in feature_columns:
-                    if col not in X.columns:
-                        X[col] = 0
-                
-                probas = model.predict_proba(X[feature_columns])[:, 1]
-                preds = (probas >= threshold).astype(int)
-                
-                df['Olasilik'] = probas
-                df['Tahmin'] = preds
-                df['Sonuc'] = df['Tahmin'].map({0: 'SAGLAM', 1: 'HATALI'})
-                
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Toplam", len(df))
-                c2.metric("Hatali", int(preds.sum()))
-                c3.metric("Saglam", int(len(df) - preds.sum()))
-                
-                st.dataframe(df[['Olasilik', 'Sonuc']].head(20))
-                
-                csv = df.to_csv(index=False)
-                st.download_button("📥 Sonuclari Indir", csv, "tahminler.csv", "text/csv")
+                with st.spinner("Tahminler hesaplaniyor..."):
+                    orig_cols = [c for c in df.columns if c not in ['Id', 'Response']]
+                    X = add_features(df, orig_cols)
+                    
+                    for col in feature_columns:
+                        if col not in X.columns:
+                            X[col] = 0
+                    
+                    probas = model.predict_proba(X[feature_columns])[:, 1]
+                    preds = (probas >= threshold).astype(int)
+                    
+                    # Sonuclari ekle
+                    results = pd.DataFrame({
+                        'Olasilik': probas,
+                        'Tahmin': preds,
+                        'Sonuc': ['HATALI' if p == 1 else 'SAGLAM' for p in preds]
+                    })
+                    
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Toplam", len(results))
+                    c2.metric("Hatali", int(preds.sum()))
+                    c3.metric("Saglam", int(len(results) - preds.sum()))
+                    
+                    st.dataframe(results.head(20))
+                    
+                    # Indirme icin sadece sonuclar
+                    csv = results.to_csv(index=False)
+                    st.download_button("📥 Sonuclari Indir", csv, "tahminler.csv", "text/csv")
                 
         except Exception as e:
             st.error(f"Hata: {e}")
+            st.info("Dosya formati uygun olmayabilir. Lutfen Bosch veri setini kullanin.")
 
 
 if __name__ == "__main__":
