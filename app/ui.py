@@ -42,6 +42,15 @@ def main():
     st.title("🔧 Bosch Uretim Hatti Kalite Tahmini")
     st.markdown("*XGBoost tabanli urun kalite tahmin sistemi*")
     
+    # Veri indirme uyarisi
+    st.warning("""
+    ⚠️ **Onemli:** Dosya boyutu kisitlamasi nedeniyle test verileri bu uygulamaya dahil edilememistir.  
+    
+    **CSV dosyalarini indirmek icin:** [Google Drive](https://drive.google.com/drive/u/1/folders/1-Qobnb-MZkYQ3-Gi2JaQKZ4H185CuYex)  
+    
+    Indirdikten sonra **"📁 CSV Yukle"** sekmesinden dosyanizi yukleyebilirsiniz.
+    """)
+    
     try:
         model, feature_columns, config = load_model()
         default_threshold = config.get('threshold', 0.35)
