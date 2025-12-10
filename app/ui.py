@@ -1,5 +1,5 @@
 """
-Bosch Kalite Tahmin Arayüzü (Streamlit).
+Bosch Kalite Tahmin Arayuzu (Streamlit).
 """
 
 import streamlit as st
@@ -8,468 +8,355 @@ import numpy as np
 import sys
 import joblib
 from pathlib import Path
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 sys.path.append(str(Path(__file__).parent.parent / "src"))
-
-from config import MODEL_PATH
 
 # Paths
 MODELS_DIR = Path(__file__).parent.parent / "models"
 DATA_DIR = Path(__file__).parent.parent / "data"
 
-# Page configuration
-st.set_page_config(
-    page_title="Bosch Quality Prediction",
-    page_icon="🏭",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
 
 @st.cache_resource
-def load_trained_model():
-    """Eğitilmiş modeli yükle."""
-    try:
-        model_path = MODELS_DIR / "final_model.pkl"
-        if not model_path.exists():
-            model_path = MODELS_DIR / "bosch_quality_classifier.pkl"
-        
-        model = joblib.load(model_path)
-        
-        # Load feature names
-        feature_path = MODELS_DIR / "feature_names.pkl"
-        if feature_path.exists():
-            feature_columns = joblib.load(feature_path)
-        else:
-            feature_columns = joblib.load(MODELS_DIR / "feature_columns.pkl")
-        
-        # Load config if exists
-        config_path = MODELS_DIR / "model_config.pkl"
-        if config_path.exists():
-            config = joblib.load(config_path)
-        else:
-            config = {'threshold': 0.35}
-        
-        return model, feature_columns, config
-    except Exception as e:
-        st.error(f"Error loading model: {e}")
-        return None, None, None
+def load_model():
+    """Model yukle."""
+    model = joblib.load(MODELS_DIR / "final_model.pkl")
+    feature_names = joblib.load(MODELS_DIR / "feature_names.pkl")
+    config = joblib.load(MODELS_DIR / "model_config.pkl")
+    return model, feature_names, config
 
 
 @st.cache_data
-def load_sample_data():
-    """Örnek veri yükle."""
-    try:
-        for data_file in ["test_numeric_clean_alt.csv", "train_numeric_clean.csv", 
-                          "demo_test.csv", "demo_train.csv", "train_numeric.csv"]:
-            data_path = DATA_DIR / data_file
-            if data_path.exists():
-                df = pd.read_csv(data_path, nrows=10000)
-                return df, False
-        
-        return None, True
-    except Exception as e:
-        return None, True
-
-
-def generate_realistic_sample(feature_columns, force_failure=False):
-    """Gerçekçi örnek veri üret."""
-    np.random.seed(None)
-    
-    sample = {}
-    
-    # riskli görünsün mü?
-    is_risky = force_failure or (np.random.random() < 0.15)
-    
-    # istasyon bazlı korelasyonlu değerler üret
-    station_base = {}
-    for col in feature_columns:
-        if col.startswith('L') and '_S' in col and '_F' in col:
-            parts = col.split('_')
-            station = f"{parts[0]}_{parts[1]}"
-            
-            if station not in station_base:
-                if is_risky:
-                    station_base[station] = np.random.uniform(-0.8, 0.8)
-                else:
-                    station_base[station] = np.random.uniform(-0.3, 0.3)
-            
-            noise = np.random.normal(0, 0.15)
-            value = station_base[station] + noise
-            
-            if is_risky and np.random.random() < 0.1:
-                value = np.random.choice([-1, 1]) * np.random.uniform(0.7, 1.0)
-            
-            sample[col] = np.clip(value, -1, 1)
-        
-        elif col.startswith('row_'):
-            continue
-        else:
-            sample[col] = np.random.uniform(-0.5, 0.5)
-    
-    return pd.DataFrame([sample]), is_risky
-
-
-def apply_feature_engineering(df, original_columns):
-    """Feature engineering uygula."""
-    X = df.copy()
-    
-    X['row_mean'] = df[original_columns].mean(axis=1)
-    X['row_std'] = df[original_columns].std(axis=1)
-    X['row_min'] = df[original_columns].min(axis=1)
-    X['row_max'] = df[original_columns].max(axis=1)
-    X['row_range'] = X['row_max'] - X['row_min']
-    X['row_nonzero'] = (df[original_columns] != 0).sum(axis=1)
-    
-    return X
+def load_test_data():
+    """Test verisi yukle."""
+    for fname in ["test_numeric_clean_alt.csv", "train_numeric_clean.csv"]:
+        fpath = DATA_DIR / fname
+        if fpath.exists():
+            return pd.read_csv(fpath, nrows=5000)
+    return None
 
 
 def main():
-    """Ana uygulama."""
+    st.set_page_config(page_title="Bosch Kalite Tahmin", page_icon="🔧", layout="wide")
     
-    st.title("🏭 Bosch Quality Prediction System")
-    st.markdown("""
-    Üretim hattındaki parçaların **kalite kontrol** tahminini yapan sistem.
+    st.title("🔧 Bosch Uretim Hatti Kalite Tahmini")
+    st.markdown("*XGBoost tabanli urun kalite tahmin sistemi*")
     
-    **Model:** XGBoost + Feature Engineering + SMOTE
-    """)
-    
-    # Load model
-    model, feature_columns, config = load_trained_model()
-    
-    if model is None:
-        st.warning("⚠️ Model yüklenemedi. Lütfen önce modeli eğitin.")
-        st.code("python src/train.py", language="bash")
+    try:
+        model, feature_columns, config = load_model()
+        default_threshold = config.get('threshold', 0.35)
+    except Exception as e:
+        st.error(f"Model yuklenemedi: {e}")
         return
     
     # Sidebar
-    st.sidebar.header("⚙️ Ayarlar")
+    with st.sidebar:
+        st.header("⚙️ Ayarlar")
+        threshold = st.slider("Karar Esigi (Threshold)", 0.1, 0.9, default_threshold, 0.05,
+                              help="Dusuk = daha fazla hatali tespit, Yuksek = daha az false positive")
+        
+        st.divider()
+        st.header("📊 Model Bilgisi")
+        st.metric("Ozellik Sayisi", len(feature_columns))
+        st.metric("Varsayilan Esik", f"{default_threshold:.0%}")
+        st.metric("AUC-ROC", f"{config.get('auc_roc', 0.635):.3f}")
+        
+        st.divider()
+        st.markdown("""
+        **Nasil Calisir?**
+        1. Sensor verileri girilir
+        2. Model hata olasiligi hesaplar  
+        3. Esik degerine gore karar verilir
+        """)
     
-    threshold = st.sidebar.slider(
-        "Karar Eşiği (Threshold)",
-        min_value=0.1,
-        max_value=0.9,
-        value=float(config.get('threshold', 0.35)),
-        step=0.05,
-        help="Yüksek threshold = daha az False Positive, düşük threshold = daha az False Negative"
-    )
+    # Tabs
+    tab1, tab2, tab3 = st.tabs(["🎲 Rastgele Ornek", "✏️ Manuel Test", "📤 CSV Yukle"])
     
-    st.sidebar.success(f"✅ Model yüklendi ({len(feature_columns)} feature)")
+    with tab1:
+        show_random_prediction(model, feature_columns, threshold)
     
-    # Show model metrics
-    if 'metrics' in config:
-        st.sidebar.markdown("### 📊 Model Metrikleri")
-        st.sidebar.metric("AUC-ROC", f"{config['metrics']['auc_roc']:.4f}")
-        st.sidebar.metric("F1-Score", f"{config['metrics']['f1_score']:.4f}")
-    
-    prediction_mode = st.sidebar.radio(
-        "Tahmin Modu",
-        ["🎲 Rastgele Örnek", "📤 CSV Yükle", "✏️ Manuel Giriş"]
-    )
-    
-    # Main content based on mode
-    if prediction_mode == "🎲 Rastgele Örnek":
-        show_random_sample_prediction(model, feature_columns, threshold)
-    elif prediction_mode == "📤 CSV Yükle":
-        show_file_upload(model, feature_columns, threshold)
-    else:
+    with tab2:
         show_manual_prediction(model, feature_columns, threshold)
+    
+    with tab3:
+        show_file_upload(model, feature_columns, threshold)
 
 
-def show_random_sample_prediction(model, feature_columns, threshold):
-    """Rastgele örnek ile tahmin."""
-    st.header("🎲 Rastgele Örnek ile Tahmin")
+def add_features(df, cols):
+    """Ozellik muhendisligi."""
+    X = df.copy()
+    X['row_mean'] = df[cols].mean(axis=1)
+    X['row_std'] = df[cols].std(axis=1)
+    X['row_min'] = df[cols].min(axis=1)
+    X['row_max'] = df[cols].max(axis=1)
+    X['row_range'] = X['row_max'] - X['row_min']
+    X['row_nonzero'] = (df[cols] != 0).sum(axis=1)
+    X['missing_ratio'] = df[cols].isna().mean(axis=1)
+    return X
+
+
+def show_gauge(proba, threshold):
+    """Risk gostergesi."""
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=proba * 100,
+        number={'suffix': '%'},
+        title={'text': "Hata Riski"},
+        gauge={
+            'axis': {'range': [0, 100]},
+            'bar': {'color': "darkred" if proba >= threshold else "green"},
+            'steps': [
+                {'range': [0, 35], 'color': "#90EE90"},
+                {'range': [35, 70], 'color': "#FFD700"},
+                {'range': [70, 100], 'color': "#FF6B6B"}
+            ],
+            'threshold': {'line': {'color': "black", 'width': 3}, 'value': threshold * 100}
+        }
+    ))
+    fig.update_layout(height=280, margin=dict(t=80, b=20))
+    return fig
+
+
+def show_random_prediction(model, feature_columns, threshold):
+    """Rastgele ornek testi."""
+    st.header("🎲 Rastgele Ornek")
     
-    result = load_sample_data()
-    sample_df, is_simulation = result if result else (None, True)
+    test_data = load_test_data()
     
-    # Don't show any indication that it's simulation - seamless experience
-    st.markdown("""
-    Test verisinden rastgele bir satır çekip model tahmini yapar.
-    Bu özellik, modelin gerçek üretim verileri üzerinde nasıl çalıştığını gösterir.
-    """)
+    if test_data is None:
+        st.warning("⚠️ Test verisi bulunamadi. Sentetik veri uretiliyor...")
+        use_synthetic = True
+    else:
+        use_synthetic = False
+        st.success(f"✅ {len(test_data)} satir test verisi yuklendi")
     
-    col1, col2 = st.columns([1, 3])
-    
-    with col1:
-        if st.button("🎲 Rastgele Örnek Çek", type="primary", use_container_width=True):
-            st.session_state['random_sample'] = True
-            st.session_state['is_simulation'] = is_simulation
-            if not is_simulation and sample_df is not None:
-                st.session_state['sample_idx'] = np.random.randint(0, len(sample_df))
-            else:
-                st.session_state['sample_idx'] = np.random.randint(10000, 99999)
-            st.session_state['sample_df'] = sample_df
-    
-    if 'random_sample' in st.session_state and st.session_state['random_sample']:
-        is_sim = st.session_state.get('is_simulation', True)
-        idx = st.session_state.get('sample_idx', 0)
-        stored_df = st.session_state.get('sample_df', None)
-        
-        if is_sim:
-            sample, is_risky = generate_realistic_sample(feature_columns)
-            actual_label = 1 if is_risky and np.random.random() < 0.7 else 0
-            original_cols = [c for c in feature_columns if not c.startswith('row_')]
+    if st.button("🎲 Yeni Ornek Sec", type="primary"):
+        if use_synthetic:
+            # Sentetik veri uret
+            sample_data = {col: np.random.uniform(-0.5, 0.5) for col in feature_columns if col.startswith('L')}
+            sample_data['row_mean'] = np.random.uniform(0.1, 0.4)
+            sample_data['row_std'] = np.random.uniform(0.05, 0.2)
+            sample_data['row_min'] = 0.0
+            sample_data['row_max'] = np.random.uniform(0.3, 0.8)
+            sample_data['row_range'] = sample_data['row_max'] - sample_data['row_min']
+            sample_data['row_nonzero'] = np.random.randint(80, 140)
+            sample_data['missing_ratio'] = np.random.uniform(0.7, 0.9)
+            
+            for col in feature_columns:
+                if col not in sample_data:
+                    sample_data[col] = 0.0
+            
+            X_pred = pd.DataFrame([sample_data])[feature_columns]
+            actual = None
         else:
-            sample = stored_df.iloc[[idx]].copy()
-            actual_label = None
-            if 'Response' in sample.columns:
-                actual_label = int(sample['Response'].values[0])
-                sample = sample.drop(['Id', 'Response'], axis=1, errors='ignore')
-            original_cols = [c for c in sample.columns if c not in ['Id', 'Response']]
+            idx = np.random.randint(0, len(test_data))
+            sample = test_data.iloc[[idx]]
+            
+            orig_cols = [c for c in sample.columns if c not in ['Id', 'Response']]
+            X = add_features(sample, orig_cols)
+            
+            for col in feature_columns:
+                if col not in X.columns:
+                    X[col] = 0
+            
+            X_pred = X[feature_columns]
+            actual = int(sample['Response'].values[0]) if 'Response' in sample.columns else None
         
-        X_eng = apply_feature_engineering(sample, original_cols)
-        
-        available_features = [f for f in feature_columns if f in X_eng.columns]
-        X_final = X_eng[available_features].fillna(0)
-        X_final = X_final.replace([np.inf, -np.inf], 0)
-        
-        proba = model.predict_proba(X_final)[0, 1]
-        prediction = 1 if proba >= threshold else 0
+        proba = model.predict_proba(X_pred)[0, 1]
+        pred = 1 if proba >= threshold else 0
         
         st.divider()
         
-        with col2:
-            st.subheader("📊 Tahmin Sonucu")
+        # Sonuclar
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Hata Olasiligi", f"{proba:.1%}")
         
-        result_col1, result_col2, result_col3 = st.columns(3)
+        if pred == 1:
+            c2.error("❌ Tahmin: HATALI")
+        else:
+            c2.success("✅ Tahmin: SAGLAM")
         
-        with result_col1:
-            st.metric("Örnek ID", f"#{idx}")
-        
-        with result_col2:
-            st.metric("Hata Olasılığı", f"{proba:.1%}")
-        
-        with result_col3:
-            if prediction == 1:
-                st.error("❌ Tahmin: **HATALI**")
+        if actual is not None:
+            if actual == 1:
+                c3.warning("⚠️ Gercek: HATALI")
             else:
-                st.success("✅ Tahmin: **SAĞLAM**")
+                c3.info("ℹ️ Gercek: SAGLAM")
         
-        if actual_label is not None:
-            st.divider()
-            col_a, col_b, col_c = st.columns(3)
-            
-            with col_a:
-                actual_text = "🔴 HATALI" if actual_label == 1 else "🟢 SAĞLAM"
-                st.info(f"**Gerçek Durum:** {actual_text}")
-            
-            with col_b:
-                pred_text = "🔴 HATALI" if prediction == 1 else "🟢 SAĞLAM"
-                st.info(f"**Model Tahmini:** {pred_text}")
-            
-            with col_c:
-                if actual_label == prediction:
-                    st.success("✅ **DOĞRU TAHMİN!**")
-                else:
-                    st.warning("⚠️ **Yanlış Tahmin**")
-        
-        fig, ax = plt.subplots(figsize=(8, 2))
-        color = 'red' if prediction == 1 else 'green'
-        ax.barh(['Hata Riski'], [proba], color=color, alpha=0.7)
-        ax.axvline(x=threshold, color='purple', linestyle='--', label=f'Eşik ({threshold:.2f})')
-        ax.set_xlim([0, 1])
-        ax.set_xlabel('Olasılık')
-        ax.legend()
-        st.pyplot(fig)
-        plt.close()
-        with st.expander("📋 Örnek Veri Detayları (Sensör Okumaları)"):
-            display_cols = [c for c in sample.columns if not c.startswith('row_')][:20]
-            if display_cols:
-                st.dataframe(sample[display_cols].T.rename(columns={sample.index[0]: 'Değer'}))
-            
-            st.markdown(f"""
-            **Veri İstatistikleri:**
-            - Toplam sensör sayısı: {len(original_cols)}
-            - Ortalama değer: {sample[original_cols].mean(axis=1).values[0]:.4f}
-            - Std sapma: {sample[original_cols].std(axis=1).values[0]:.4f}
-            """)
+        # Gauge
+        st.plotly_chart(show_gauge(proba, threshold), use_container_width=True)
 
 
 def show_manual_prediction(model, feature_columns, threshold):
-    """Manuel veri girişi."""
-    st.header("✏️ Manuel Veri Girişi")
+    """Manuel test - detayli."""
+    st.header("✏️ Manuel Test")
     
-    st.info("""
-    ℹ️ **Bu bölüm demo amaçlıdır.** Model 358 özellik kullanmaktadır.
-    Gerçek kullanım için **CSV Yükleme** veya **Rastgele Örnek** önerilir.
-    """)
-    
-    # Feature açıklamaları
-    with st.expander("📖 Özellik Açıklamaları", expanded=True):
+    # Ozellik aciklamalari
+    with st.expander("📖 Ozellik Aciklamalari", expanded=True):
         st.markdown("""
-        Bu değerler her parçanın **sensör ölçümlerinden** hesaplanır:
+        | Ozellik | Aciklama | Normal Aralik | Riskli Aralik |
+        |---------|----------|---------------|---------------|
+        | **Sensor Ortalamasi** | Tum sensorlerin ortalama degeri | 0.10 - 0.25 | > 0.40 |
+        | **Degiskenlik (Std)** | Sensorler arasi tutarsizlik | 0.05 - 0.15 | > 0.30 |
+        | **Min Deger** | En dusuk sensor okumasi | 0.00 | - |
+        | **Max Deger** | En yuksek sensor okumasi | 0.30 - 0.50 | > 0.80 |
+        | **Aktif Sensor** | Sifir olmayan sensor sayisi | > 100 | < 70 |
+        | **Eksik Veri Orani** | Bos sensor orani | 0.70 - 0.80 | > 0.90 |
         
-        | Özellik | Açıklama | Tipik Aralık |
-        |---------|----------|--------------|
-        | **row_mean** | Sensör değerlerinin ortalaması | 0.1 - 0.5 |
-        | **row_std** | Değerlerin dağınıklığı (standart sapma) | 0.05 - 0.3 |
-        | **row_min** | En düşük sensör ölçümü | 0.0 - 0.2 |
-        | **row_max** | En yüksek sensör ölçümü | 0.3 - 1.0 |
-        | **row_nonzero** | Sıfır olmayan sensör sayısı | 50 - 150 |
-        
-        🔍 **İpucu:** Hatalı parçalarda genellikle `row_std` yüksek, `row_mean` anormal olur.
+        💡 **Ipucu:** Riskli aralikta degerler, uretimdeki potansiyel sorunlara isaret eder.
         """)
-    
-    st.markdown("### Değerleri Girin")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        row_mean = st.number_input(
-            "row_mean", 
-            value=0.15, 
-            min_value=0.0,
-            max_value=1.0,
-            step=0.01,
-            format="%.4f", 
-            help="Tüm sensör değerlerinin ortalaması (0-1 arası)"
-        )
-        row_std = st.number_input(
-            "row_std", 
-            value=0.08, 
-            min_value=0.0,
-            max_value=1.0,
-            step=0.01,
-            format="%.4f",
-            help="Değerlerin standart sapması - yüksekse değişkenlik fazla"
-        )
-        row_min = st.number_input(
-            "row_min", 
-            value=0.0, 
-            min_value=0.0,
-            max_value=1.0,
-            step=0.01,
-            format="%.4f",
-            help="En düşük sensör ölçümü"
-        )
-    
-    with col2:
-        row_max = st.number_input(
-            "row_max", 
-            value=0.45, 
-            min_value=0.0,
-            max_value=1.0,
-            step=0.01,
-            format="%.4f",
-            help="En yüksek sensör ölçümü"
-        )
-        row_nonzero = st.number_input(
-            "row_nonzero", 
-            value=100, 
-            min_value=0,
-            max_value=200,
-            step=5,
-            help="Kaç sensör sıfırdan farklı değer okudu"
-        )
-    
-    # Hesaplanan değer
-    row_range = row_max - row_min
-    st.caption(f"📊 Hesaplanan `row_range` = {row_range:.4f} (max - min)")
     
     st.divider()
     
-    if st.button("🔮 Tahmin Yap", type="primary", use_container_width=True):
-        # Feature vector oluştur
+    # Hazir senaryolar
+    scenario = st.selectbox("🎯 Senaryo Sec", [
+        "Ozel Degerler Gir",
+        "✅ Normal Parca (Dusuk Risk)",
+        "⚠️ Supheli Parca (Orta Risk)", 
+        "❌ Riskli Parca (Yuksek Risk)"
+    ])
+    
+    scenarios = {
+        "✅ Normal Parca (Dusuk Risk)": (0.15, 0.08, 0.0, 0.40, 125, 0.75),
+        "⚠️ Supheli Parca (Orta Risk)": (0.32, 0.22, 0.0, 0.85, 90, 0.82),
+        "❌ Riskli Parca (Yuksek Risk)": (0.55, 0.40, 0.0, 1.0, 55, 0.93)
+    }
+    
+    st.divider()
+    
+    if scenario == "Ozel Degerler Gir":
+        c1, c2 = st.columns(2)
+        with c1:
+            row_mean = st.slider("📊 Sensor Ortalamasi", 0.0, 1.0, 0.20, 0.01,
+                                help="Yuksek deger = anomali riski artar")
+            row_std = st.slider("📈 Degiskenlik (Std)", 0.0, 0.5, 0.10, 0.01,
+                               help="Yuksek = tutarsiz uretim")
+            row_min = st.slider("⬇️ Min Deger", 0.0, 0.5, 0.0, 0.01)
+        with c2:
+            row_max = st.slider("⬆️ Max Deger", 0.0, 1.0, 0.50, 0.01)
+            row_nonzero = st.slider("🔢 Aktif Sensor Sayisi", 20, 150, 100,
+                                   help="Dusuk = veri eksikligi")
+            missing_ratio = st.slider("❓ Eksik Veri Orani", 0.5, 1.0, 0.80, 0.01,
+                                     help="Yuksek = daha az veri")
+    else:
+        row_mean, row_std, row_min, row_max, row_nonzero, missing_ratio = scenarios[scenario]
+        
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Sensor Ort.", f"{row_mean:.2f}")
+        c2.metric("Degiskenlik", f"{row_std:.2f}")
+        c3.metric("Aktif Sensor", row_nonzero)
+    
+    st.divider()
+    
+    if st.button("🔍 Analiz Et", type="primary", use_container_width=True):
+        # Feature vector olustur
         features = {col: 0.0 for col in feature_columns}
-        features['row_mean'] = row_mean
-        features['row_std'] = row_std
-        features['row_min'] = row_min
-        features['row_max'] = row_max
-        features['row_range'] = row_range
-        features['row_nonzero'] = row_nonzero
+        features.update({
+            'row_mean': row_mean,
+            'row_std': row_std,
+            'row_min': row_min,
+            'row_max': row_max,
+            'row_range': row_max - row_min,
+            'row_nonzero': float(row_nonzero),
+            'missing_ratio': missing_ratio
+        })
         
         X = pd.DataFrame([features])[feature_columns]
-        
         proba = model.predict_proba(X)[0, 1]
-        prediction = 1 if proba >= threshold else 0
+        pred = 1 if proba >= threshold else 0
         
         st.divider()
         
-        col_r1, col_r2 = st.columns(2)
+        # Sonuc kartlari
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Hata Olasiligi", f"{proba:.1%}")
+        c2.metric("Risk Skoru", f"{min(proba * 150, 100):.0f}/100")
+        c3.metric("Karar Esigi", f"{threshold:.0%}")
+        c4.metric("Guven", f"{abs(proba - threshold) * 100:.0f}%")
         
-        with col_r1:
-            st.metric("Hata Olasılığı", f"{proba:.1%}")
+        # Karar
+        if pred == 1:
+            st.error("❌ **SONUC: HATALI** - Bu parca inceleme istasyonuna yonlendirilmeli!")
+        else:
+            st.success("✅ **SONUC: SAGLAM** - Bu parca kalite standartlarini karsilamaktadir.")
         
-        with col_r2:
-            if prediction == 1:
-                st.error("❌ Tahmin: **HATALI PARÇA**")
-            else:
-                st.success("✅ Tahmin: **SAĞLAM PARÇA**")
+        # Gauge grafik
+        st.plotly_chart(show_gauge(proba, threshold), use_container_width=True)
+        
+        # Faktor analizi
+        st.subheader("📋 Detayli Faktor Analizi")
+        
+        factors = [
+            ("Sensor Ortalamasi", row_mean, "< 0.25", row_mean <= 0.25, 
+             "Normal" if row_mean <= 0.25 else "Yuksek - dikkat!"),
+            ("Degiskenlik", row_std, "< 0.15", row_std <= 0.15,
+             "Tutarli" if row_std <= 0.15 else "Tutarsiz uretim!"),
+            ("Deger Araligi", row_max - row_min, "< 0.50", (row_max - row_min) <= 0.50,
+             "Normal" if (row_max - row_min) <= 0.50 else "Genis aralik!"),
+            ("Aktif Sensor", row_nonzero, "> 100", row_nonzero >= 100,
+             "Yeterli veri" if row_nonzero >= 100 else "Veri eksik!"),
+            ("Veri Kalitesi", 1 - missing_ratio, "> 0.20", (1 - missing_ratio) >= 0.20,
+             "Kabul edilebilir" if (1 - missing_ratio) >= 0.20 else "Cok fazla eksik!")
+        ]
+        
+        for name, val, ideal, ok, comment in factors:
+            icon = "✅" if ok else "⚠️"
+            st.markdown(f"{icon} **{name}:** `{val:.2f}` (ideal: {ideal}) - _{comment}_")
+        
+        # Maliyet analizi
+        st.subheader("💰 Maliyet Etkisi")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("""
+            **Hatali parca kacirsa:**
+            - Garanti maliyeti: ~$500
+            - Marka itibar kaybi
+            """)
+        with c2:
+            st.markdown("""
+            **Gereksiz inceleme yapilsa:**
+            - Ekstra iscilik: ~$10
+            - Uretim gecikmesi: Minimal
+            """)
 
 
 def show_file_upload(model, feature_columns, threshold):
-    """Dosya yükleme arayüzü."""
-    st.header("📤 CSV Dosyası Yükle")
+    """CSV yukleme."""
+    st.header("📤 CSV Yukle")
     
-    st.markdown("Bosch veri formatında CSV dosyası yükleyin:")
+    uploaded = st.file_uploader("CSV dosyasi secin", type=['csv'])
     
-    uploaded_file = st.file_uploader("CSV dosyası seçin", type=['csv'])
-    
-    if uploaded_file is not None:
+    if uploaded:
         try:
-            # Read CSV
-            df = pd.read_csv(uploaded_file)
+            df = pd.read_csv(uploaded)
+            st.success(f"✅ Yuklendi: {len(df)} satir, {len(df.columns)} sutun")
             
-            st.subheader("📋 Veri Önizleme")
-            st.dataframe(df.head(), use_container_width=True)
-            st.info(f"Yüklendi: {len(df)} satır, {len(df.columns)} sütun")
-            
-            if st.button("🔮 Tümünü Tahmin Et", type="primary"):
-                with st.spinner("Tahminler yapılıyor..."):
-                    # Prepare data
-                    X = df.drop(['Id', 'Response'], axis=1, errors='ignore')
-                    original_cols = list(X.columns)
-                    
-                    # Apply feature engineering
-                    X_eng = apply_feature_engineering(X, original_cols)
-                    
-                    # Select model features
-                    available_features = [f for f in feature_columns if f in X_eng.columns]
-                    X_final = X_eng[available_features].fillna(-999)
-                    X_final = X_final.replace([np.inf, -np.inf], -999)
-                    
-                    # Make predictions
-                    probas = model.predict_proba(X_final)[:, 1]
-                    predictions = (probas >= threshold).astype(int)
-                    
-                    # Add predictions to dataframe
-                    results_df = df.copy()
-                    results_df['Hata_Olasiligi'] = probas
-                    results_df['Tahmin'] = ['HATALI' if p == 1 else 'SAĞLAM' for p in predictions]
-                    
-                    # Display results
-                    st.divider()
-                    st.subheader("📊 Tahmin Sonuçları")
-                    st.dataframe(results_df, use_container_width=True)
-                    
-                    # Summary
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Toplam Örnek", len(predictions))
-                    with col2:
-                        st.metric("Hatalı Tahmin", int(sum(predictions)))
-                    with col3:
-                        st.metric("Hata Oranı", f"{sum(predictions)/len(predictions):.1%}")
-                    
-                    # Actual vs Predicted if Response exists
-                    if 'Response' in df.columns:
-                        actual = df['Response'].values
-                        correct = sum(actual == predictions)
-                        st.success(f"✅ Doğruluk: {correct}/{len(predictions)} ({100*correct/len(predictions):.1f}%)")
-                    
-                    # Download button
-                    csv = results_df.to_csv(index=False)
-                    st.download_button(
-                        label="📥 Sonuçları İndir",
-                        data=csv,
-                        file_name="tahmin_sonuclari.csv",
-                        mime="text/csv"
-                    )
-        
+            if st.button("Toplu Tahmin Yap", type="primary"):
+                orig_cols = [c for c in df.columns if c not in ['Id', 'Response']]
+                X = add_features(df, orig_cols)
+                
+                for col in feature_columns:
+                    if col not in X.columns:
+                        X[col] = 0
+                
+                probas = model.predict_proba(X[feature_columns])[:, 1]
+                preds = (probas >= threshold).astype(int)
+                
+                df['Olasilik'] = probas
+                df['Tahmin'] = preds
+                df['Sonuc'] = df['Tahmin'].map({0: 'SAGLAM', 1: 'HATALI'})
+                
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Toplam", len(df))
+                c2.metric("Hatali", int(preds.sum()))
+                c3.metric("Saglam", int(len(df) - preds.sum()))
+                
+                st.dataframe(df[['Olasilik', 'Sonuc']].head(20))
+                
+                csv = df.to_csv(index=False)
+                st.download_button("📥 Sonuclari Indir", csv, "tahminler.csv", "text/csv")
+                
         except Exception as e:
-            st.error(f"Dosya işleme hatası: {e}")
+            st.error(f"Hata: {e}")
 
 
 if __name__ == "__main__":
